@@ -84,6 +84,18 @@ Retrieve a generated audio file.
 
 Check if the TTS service is running.
 
+### Get LiveKit Token
+
+**GET** `/api/livekit/token?identity=YOUR_ID`
+
+Retrieve a token and server URL for connecting to LiveKit.
+
+### Search a Video
+
+**POST** `/api/video/search`
+
+Upload a video file and provide a `query` field to search the transcript.
+
 ## Example Usage
 
 ### Using cURL

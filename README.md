@@ -9,6 +9,11 @@ Real-time situational awareness dashboard for military commanders, integrating A
   - High-quality, natural-sounding speech synthesis with emotion and style control.
   - Voice cloning from short audio prompts.
   - Low-latency generation for real-time applications.
+- **LiveKit Voice Streaming**:
+  - Uses a local LiveKit server for WebRTC audio capture.
+  - Generates access tokens via the backend for secure connections.
+- **Video Search Capability**:
+  - Upload a video and search its transcript for keywords.
 - **Multimodal Input Processing**:
   - Voice command analysis for emotion and urgency.
   - Text input processing for tactical queries and intent classification.
@@ -32,7 +37,7 @@ The application now runs on a unified backend built with Python and FastAPI. Thi
     - `/api/analyze/*`: Endpoints for voice, text, and visual analysis.
     - `/api/tactical-data`: Endpoint for retrieving and updating tactical information (units, threats).
 3. **Running Analysis Logic**: The core analysis functions are implemented in Python.
-4. **Orchestration**: The entire application is containerized using Docker and managed with a single `docker-compose.yml` file.
+4. **Orchestration**: Docker Compose starts both the FastAPI service and a LiveKit server for real-time audio streaming.
 
 This architecture removes the complexity of managing separate Node.js and Python backends.
 
@@ -58,7 +63,7 @@ This architecture removes the complexity of managing separate Node.js and Python
     docker-compose up --build
     ```
 
-    This command will build the Docker image, install all dependencies, and start the unified backend service.
+    This command will build the Docker image, install all dependencies, and start the FastAPI backend along with a local LiveKit server.
 
 3. **Access the application:**
     - The TacSense AI dashboard will be available at `http://localhost:8000`.

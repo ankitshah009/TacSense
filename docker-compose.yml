@@ -12,6 +12,17 @@ services:
       - ./frontend:/usr/src/app/frontend
     networks:
       - tacsense_network
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+    networks:
+      - tacsense_network
 
 networks:
   tacsense_network:
