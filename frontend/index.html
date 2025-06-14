@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>MindGuard</title>
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(45deg,#99ddff,#88ccaa); height: 100vh; display: flex; justify-content: center; align-items: center; }
+    #app { text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/javascript">
+    function App() {
+      const [state,setState] = React.useState('');
+      const [response,setResponse] = React.useState('');
+      async function analyze() {
+        const res = await fetch('/analyze', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({voiceMetrics:{pitch:320,tempo:180}, heartRate:105})
+        });
+        const data = await res.json();
+        setState(data.emotionalState);
+        const r = await fetch('/intervention/' + data.emotionalState);
+        const d = await r.json();
+        setResponse(d.response);
+      }
+      return React.createElement('div', null,
+        React.createElement('h1', null, 'MindGuard Demo'),
+        React.createElement('button', {onClick: analyze}, 'Analyze'),
+        state && React.createElement('p', null, 'State: ' + state),
+        response && React.createElement('p', null, response)
+      );
+    }
+    ReactDOM.render(React.createElement(App), document.getElementById('app'));
+  </script>
+</body>
+</html>
