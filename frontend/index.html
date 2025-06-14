@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -25,6 +26,16 @@
           </button>
           <div id="voice-status"></div>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>Video Search</h3>
+        <form id="video-form">
+          <input type="file" id="video-input" accept="video/*" />
+          <input type="text" id="video-query" placeholder="Search query" class="mt-1" />
+          <button type="submit" class="btn mt-1">Search Video</button>
+        </form>
+        <div id="video-result" class="mt-1"></div>
       </div>
       
       <div class="card">
@@ -120,21 +131,33 @@
       setInterval(updateConsoleTime, 1000);
       updateConsoleTime();
       
-      // Voice command handling
+      // Voice command handling with LiveKit
       const voiceBtn = document.getElementById('voice-btn');
       const voiceStatus = document.getElementById('voice-status');
-      
+      let livekitRoom = null;
+
+      async function connectLiveKit() {
+        if (livekitRoom) return livekitRoom;
+        const res = await fetch('/api/livekit/token?identity=dashboard');
+        const data = await res.json();
+        livekitRoom = new LiveKit.Room();
+        await livekitRoom.connect(data.url, data.token);
+        await livekitRoom.localParticipant.enableCameraAndMicrophone();
+        return livekitRoom;
+      }
+
       if ('webkitSpeechRecognition' in window) {
         const recognition = new webkitSpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = true;
         
-        voiceBtn.addEventListener('click', () => {
+        voiceBtn.addEventListener('click', async () => {
           if (voiceBtn.classList.contains('listening')) {
             recognition.stop();
             voiceBtn.classList.remove('listening');
             voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> Start Voice Command';
           } else {
+            await connectLiveKit();
             recognition.start();
             voiceBtn.classList.add('listening');
             voiceBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Listening';
@@ -275,6 +298,21 @@
       // Initialize the UI
       initializeUnitList();
       initializeRecommendations();
+
+      // Video search form
+      const videoForm = document.getElementById('video-form');
+      videoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('video-input');
+        const queryInput = document.getElementById('video-query');
+        if (!fileInput.files.length) return;
+        const formData = new FormData();
+        formData.append('video', fileInput.files[0]);
+        formData.append('query', queryInput.value);
+        const resp = await fetch('/api/video/search', { method: 'POST', body: formData });
+        const result = await resp.json();
+        document.getElementById('video-result').textContent = result.found ? `Found: ${result.transcript}` : 'Not found';
+      });
       
       // Add a welcome message
       setTimeout(() => {
