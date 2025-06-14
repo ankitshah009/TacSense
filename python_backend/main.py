@@ -4,12 +4,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 import torchaudio as ta
-from typing import Optional
+from typing import Optional, List
+import requests
 import torch
 import uuid
 import tempfile
 from pydub import AudioSegment
 import soundfile as sf
+from pydantic import BaseModel
 import io
 from livekit import AccessToken
 import time
@@ -34,6 +36,35 @@ app.add_middleware(
 # Ensure temp directory exists
 TEMP_DIR = Path("temp")
 TEMP_DIR.mkdir(exist_ok=True)
+
+# External Inflection AI API
+INFLECTION_URL = "https://api.inflection.ai/external/api/inference"
+
+def call_inflection_api(payload: dict) -> dict:
+    """Proxy a request to the Inflection AI inference API."""
+    token = os.getenv("INFLECTION_API_TOKEN")
+    if not token:
+        raise HTTPException(status_code=500, detail="Inflection API token not configured")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    try:
+        response = requests.post(INFLECTION_URL, headers=headers, json=payload, timeout=20)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class Message(BaseModel):
+    text: str
+    type: str = "Human"
+
+
+class InferenceRequest(BaseModel):
+    context: List[Message]
+    config: str = "Pi-3.1"
 
 def load_model():
     """Lazy load the TTS model"""
@@ -162,6 +193,13 @@ async def search_video(query: str = Form(...), video: UploadFile = File(...)):
         return {"found": found, "transcript": transcript}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/inference")
+async def run_inference(request: InferenceRequest):
+    """Run inference using the external Inflection AI service."""
+    payload = request.dict()
+    return call_inflection_api(payload)
 
 if __name__ == "__main__":
     import uvicorn
