@@ -1,0 +1,18 @@
+services:
+  tacsense_app:
+    build:
+      context: .  # Context is now the project root
+      dockerfile: ./python_backend/Dockerfile # Path to Dockerfile from root
+    ports:
+      - "8000:8000"  # The Python app runs on port 8000 and serves everything
+    volumes:
+      # Mounts the python_backend code for development (reflects changes without rebuilding)
+      - ./python_backend:/usr/src/app/python_backend
+      # Mounts the frontend code so the Python server (FastAPI) can serve it
+      - ./frontend:/usr/src/app/frontend
+    networks:
+      - tacsense_network
+
+networks:
+  tacsense_network:
+    driver: bridge
