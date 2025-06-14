@@ -63,6 +63,13 @@ This architecture removes the complexity of managing separate Node.js and Python
     docker-compose up --build
     ```
 
+    Set the `INFLECTION_API_TOKEN` environment variable with your Inflection AI
+    API token before running the container:
+
+    ```bash
+    export INFLECTION_API_TOKEN=<your-token>
+    ```
+
     This command will build the Docker image, install all dependencies, and start the FastAPI backend along with a local LiveKit server.
 
 3. **Access the application:**
@@ -79,6 +86,7 @@ All endpoints are served from the main application running on port 8000.
 - `POST /api/tts/generate`: Generate speech from text.
 - `GET /api/tts/audio/{filename}`: Retrieve generated audio.
 - `GET /api/tts/status`: Check TTS model status.
+- `POST /api/inference`: Proxy to the external Inflection AI inference API.
 - `POST /api/analyze/voice`: Analyze voice metrics.
 - `POST /api/analyze/text`: Analyze text input.
 - `POST /api/analyze/visual`: Analyze visual data.
