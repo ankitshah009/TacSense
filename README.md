@@ -8,6 +8,7 @@ Real-time situational awareness dashboard for military commanders, integrating A
   - Voice command analysis with emotion detection
   - Text input processing for tactical queries
   - Visual data integration (maps, sensor feeds)
+  - Unified multimodal analysis endpoint
 
 - **AI-Powered Analysis**
   - Intent recognition for operational commands
@@ -26,6 +27,7 @@ Real-time situational awareness dashboard for military commanders, integrating A
   - `/analyze/voice` - Processes voice commands with tone analysis
   - `/analyze/text` - Interprets text-based intelligence reports
   - `/analyze/visual` - Processes visual data from maps/sensors
+  - `/analyze/multimodal` - Combines voice, text, and visual inputs
   
 - **Analysis Engine**
   - Intent recognition and classification
@@ -41,8 +43,8 @@ Real-time situational awareness dashboard for military commanders, integrating A
 ## Getting Started
 
 ### Prerequisites
-- Node.js 14+
-- npm or yarn
+- Python 3.10+
+- pip
 
 ### Installation
 
@@ -55,12 +57,12 @@ cd tacsense-ai
 2. Install backend dependencies:
 ```bash
 cd backend
-npm install
+python -m pip install -r requirements.txt
 ```
 
 3. Start the backend server:
 ```bash
-npm start
+python server.py
 ```
 
 4. Open the frontend in your browser:
