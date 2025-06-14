@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pathlib import Path
 import torchaudio as ta
 from typing import Optional, List
@@ -13,8 +13,9 @@ from pydub import AudioSegment
 import soundfile as sf
 from pydantic import BaseModel
 import io
-from livekit import AccessToken
+from livekit.api import AccessToken
 import time
+from datetime import timedelta
 from moviepy.editor import VideoFileClip
 import speech_recognition as sr
 
@@ -77,12 +78,124 @@ def load_model():
         print("TTS model loaded successfully")
     return model
 
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Root endpoint with testing interface"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>TacSense TTS Service</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .container { max-width: 800px; margin: 0 auto; }
+            .endpoint { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 5px; }
+            button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }
+            button:hover { background: #0056b3; }
+            input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 3px; }
+            .result { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎵 TacSense TTS Service</h1>
+            <p>Your Docker setup is working! Test the API endpoints below:</p>
+            
+            <div class="endpoint">
+                <h3>1. Service Status</h3>
+                <button onclick="checkStatus()">Check Status</button>
+                <div id="statusResult" class="result"></div>
+            </div>
+            
+            <div class="endpoint">
+                <h3>2. Generate Speech</h3>
+                <textarea id="ttsText" placeholder="Enter text to convert to speech...">Hello world, this is a test of the TTS system!</textarea>
+                <br>
+                <label>Exaggeration (0.0-1.0): <input type="number" id="exaggeration" min="0" max="1" step="0.1" value="0.5"></label>
+                <br>
+                <label>CFG (0.1-1.0): <input type="number" id="cfg" min="0.1" max="1" step="0.1" value="0.5"></label>
+                <br>
+                <button onclick="generateSpeech()">Generate Speech</button>
+                <div id="ttsResult" class="result"></div>
+            </div>
+            
+            <div class="endpoint">
+                <h3>3. LiveKit Token</h3>
+                <input id="identity" placeholder="Enter user identity..." value="test-user">
+                <button onclick="getLiveKitToken()">Get LiveKit Token</button>
+                <div id="livekitResult" class="result"></div>
+            </div>
+        </div>
+        
+        <script>
+            async function checkStatus() {
+                try {
+                    const response = await fetch('/api/tts/status');
+                    const data = await response.json();
+                    document.getElementById('statusResult').innerHTML = 
+                        `<strong>Status:</strong> ${data.status}<br>
+                         <strong>Model Loaded:</strong> ${data.model_loaded}<br>
+                         <strong>Device:</strong> ${data.device}`;
+                } catch (error) {
+                    document.getElementById('statusResult').innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+                }
+            }
+            
+            async function generateSpeech() {
+                const text = document.getElementById('ttsText').value;
+                const exaggeration = document.getElementById('exaggeration').value;
+                const cfg = document.getElementById('cfg').value;
+                
+                const formData = new FormData();
+                formData.append('text', text);
+                formData.append('exaggeration', exaggeration);
+                formData.append('cfg', cfg);
+                
+                try {
+                    document.getElementById('ttsResult').innerHTML = 'Generating speech... (this may take a while for first request)';
+                    const response = await fetch('/api/tts/generate', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        document.getElementById('ttsResult').innerHTML = 
+                            `<strong>Success!</strong><br>
+                             <audio controls src="${data.audio_url}">Your browser does not support audio.</audio><br>
+                             <a href="${data.audio_url}" target="_blank">Download Audio</a>`;
+                    } else {
+                        document.getElementById('ttsResult').innerHTML = `<span style="color: red;">Error: ${data.detail || 'Unknown error'}</span>`;
+                    }
+                } catch (error) {
+                    document.getElementById('ttsResult').innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+                }
+            }
+            
+            async function getLiveKitToken() {
+                const identity = document.getElementById('identity').value;
+                try {
+                    const response = await fetch(`/api/livekit/token?identity=${encodeURIComponent(identity)}`);
+                    const data = await response.json();
+                    document.getElementById('livekitResult').innerHTML = 
+                        `<strong>Token:</strong> ${data.token.substring(0, 50)}...<br>
+                         <strong>URL:</strong> ${data.url}`;
+                } catch (error) {
+                    document.getElementById('livekitResult').innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
 def create_livekit_token(identity: str) -> str:
     """Generate a LiveKit access token for a client identity"""
     api_key = os.getenv("LIVEKIT_API_KEY", "devkey")
     api_secret = os.getenv("LIVEKIT_API_SECRET", "secret")
-    at = AccessToken(api_key, api_secret, identity=identity, ttl=3600)
+    at = AccessToken(api_key, api_secret)
+    at.identity = identity
+    at.ttl = timedelta(hours=1)
     return at.to_jwt()
 
 @app.post("/api/tts/generate")

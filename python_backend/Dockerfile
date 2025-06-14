@@ -1,31 +1,40 @@
-FROM python:3.9-slim-buster
+FROM python:3.9-slim-buster AS builder
 
-# Set environment variables to prevent Python from writing .pyc files and to buffer output
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Install system dependencies, including ffmpeg for audio processing
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ffmpeg \
-        git \
-        swig \
-        build-essential \
-        pkg-config \
-        libpulse-dev \
-        libasound2-dev \
-    && apt-get clean \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    swig \
+    pkg-config \
+    libpulse-dev \
+    libasound2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Copy the requirements file and install Python dependencies
-# This is done first to leverage Docker layer caching
+# Copy the requirements file
 COPY python_backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container
+# Install Python dependencies
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
+
+# Final stage
+FROM python:3.9-slim-buster
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+# Copy Python wheels from builder
+COPY --from=builder /usr/src/app/wheels /wheels
+
+# Install Python packages from wheels
+RUN pip install --no-cache-dir /wheels/*
+
+# Copy application code
 COPY python_backend/ ./python_backend
 COPY frontend/ ./frontend
 

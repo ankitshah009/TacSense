@@ -1,0 +1,31 @@
+# Use PyTorch official image (already has PyTorch + torchaudio installed)
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    build-essential \
+    git \
+    swig \
+    pkg-config \
+    libpulse-dev \
+    libasound2-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+WORKDIR /usr/src/app
+
+# Copy requirements without torch/torchaudio (already in base image)
+COPY requirements.fast.txt .
+
+# Install remaining Python dependencies (much faster without torch)
+RUN pip install --no-cache-dir -r requirements.fast.txt
+
+# Copy application code
+COPY . .
+
+# Make port 8000 available
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
