@@ -1,41 +1,503 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MindGuard</title>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TacSense AI - Military Command Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(45deg,#99ddff,#88ccaa); height: 100vh; display: flex; justify-content: center; align-items: center; }
-    #app { text-align: center; }
+    :root {
+      --primary: #1a237e;
+      --secondary: #0d47a1;
+      --accent: #2962ff;
+      --text: #e0e0e0;
+      --text-secondary: #9e9e9e;
+      --bg-dark: #121212;
+      --bg-darker: #0a0a0a;
+      --success: #00c853;
+      --warning: #ffab00;
+      --danger: #d50000;
+      --card-bg: #1e1e1e;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text);
+      line-height: 1.6;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #app {
+      display: grid;
+      grid-template-columns: 300px 1fr 300px;
+      grid-template-rows: 60px 1fr 200px;
+      height: 100vh;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    
+    /* Header */
+    .header {
+      grid-column: 1 / -1;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .logo span {
+      color: var(--accent);
+    }
+    
+    /* Sidebars */
+    .sidebar {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+    }
+    
+    .left-sidebar {
+      grid-row: 2;
+    }
+    
+    .right-sidebar {
+      grid-row: 2;
+    }
+    
+    /* Map Container */
+    .map-container {
+      grid-row: 2;
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+    
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Console */
+    .console {
+      grid-column: 1 / -1;
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+    }
+    
+    .console-entry {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-left: 3px solid var(--accent);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0 4px 4px 0;
+    }
+    
+    .console-entry.warning {
+      border-left-color: var(--warning);
+    }
+    
+    .console-entry.danger {
+      border-left-color: var(--danger);
+    }
+    
+    .console-entry.success {
+      border-left-color: var(--success);
+    }
+    
+    /* Cards */
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 3px solid var(--accent);
+    }
+    
+    .card h3 {
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* Buttons */
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+    }
+    
+    .btn:hover {
+      background: #3d5afe;
+      transform: translateY(-1px);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    
+    .status-active {
+      background: var(--success);
+    }
+    
+    .status-warning {
+      background: var(--warning);
+    }
+    
+    .status-danger {
+      background: var(--danger);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+      #app {
+        grid-template-columns: 250px 1fr 250px;
+      }
+    }
+    
+    @media (max-width: 992px) {
+      #app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60px 1fr 1fr 200px;
+      }
+      
+      .left-sidebar, .right-sidebar {
+        grid-column: 1;
+      }
+      
+      .left-sidebar {
+        grid-row: 2;
+      }
+      
+      .map-container {
+        grid-row: 3;
+      }
+      
+      .right-sidebar {
+        grid-row: 4;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="app"></div>
-  <script type="text/javascript">
-    function App() {
-      const [state,setState] = React.useState('');
-      const [response,setResponse] = React.useState('');
-      async function analyze() {
-        const res = await fetch('/analyze', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({voiceMetrics:{pitch:320,tempo:180}, heartRate:105})
-        });
-        const data = await res.json();
-        setState(data.emotionalState);
-        const r = await fetch('/intervention/' + data.emotionalState);
-        const d = await r.json();
-        setResponse(d.response);
+  <div id="app">
+    <header class="header">
+      <div class="logo">Tac<span>Sense</span> AI</div>
+    </header>
+    
+    <aside class="sidebar left-sidebar">
+      <div class="card">
+        <h3>Voice Analysis</h3>
+        <div id="voice-analysis">
+          <p>Click the microphone to start voice input</p>
+          <button id="voice-btn" class="btn">
+            <i class="fas fa-microphone"></i> Start Voice Command
+          </button>
+          <div id="voice-status" style="margin-top: 1rem;"></div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>Active Units</h3>
+        <div id="unit-list">
+          <!-- Units will be added here by JavaScript -->
+        </div>
+      </div>
+    </aside>
+    
+    <main class="map-container">
+      <div id="map"></div>
+    </main>
+    
+    <aside class="sidebar right-sidebar">
+      <div class="card">
+        <h3>Threat Assessment</h3>
+        <div id="threat-list">
+          <!-- Threats will be added here by JavaScript -->
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>Recommendations</h3>
+        <div id="recommendations">
+          <!-- Recommendations will be added here by JavaScript -->
+        </div>
+      </div>
+    </aside>
+    
+    <div class="console" id="console">
+      <div class="console-entry">System initialized at <span id="current-time"></span></div>
+      <div class="console-entry success">TacSense AI online and ready</div>
+      <div class="console-entry">Connected to command network</div>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+  
+  <!-- Main Application Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the map
+      const map = L.map('map').setView([34.0522, -118.2437], 13);
+      
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      }).addTo(map);
+      
+      // Add mock units to the map
+      const units = [
+        { id: 'unit-1', callsign: 'Alpha', latlng: [34.0522, -118.2437], status: 'active' },
+        { id: 'unit-2', callsign: 'Bravo', latlng: [34.0622, -118.2537], status: 'active' }
+      ];
+      
+      // Add unit markers to the map
+      const unitMarkers = {};
+      units.forEach(unit => {
+        unitMarkers[unit.id] = L.marker(unit.latlng, {
+          icon: L.divIcon({
+            className: 'unit-marker',
+            html: `<div class="unit-icon">${unit.callsign[0]}</div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+          })
+        }).addTo(map);
+      });
+      
+      // Add mock threats
+      const threats = [
+        { id: 'threat-1', type: 'suspicious_vehicle', latlng: [34.0572, -118.2487], confidence: 0.85 }
+      ];
+      
+      // Add threat markers to the map
+      threats.forEach(threat => {
+        L.circleMarker(threat.latlng, {
+          radius: 10,
+          color: '#ff0000',
+          fillColor: '#ff3333',
+          fillOpacity: 0.5,
+          weight: 2
+        }).addTo(map);
+      });
+      
+      // Update console with current time
+      function updateConsoleTime() {
+        document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
       }
-      return React.createElement('div', null,
-        React.createElement('h1', null, 'MindGuard Demo'),
-        React.createElement('button', {onClick: analyze}, 'Analyze'),
-        state && React.createElement('p', null, 'State: ' + state),
-        response && React.createElement('p', null, response)
-      );
-    }
-    ReactDOM.render(React.createElement(App), document.getElementById('app'));
+      setInterval(updateConsoleTime, 1000);
+      updateConsoleTime();
+      
+      // Voice command handling
+      const voiceBtn = document.getElementById('voice-btn');
+      const voiceStatus = document.getElementById('voice-status');
+      
+      if ('webkitSpeechRecognition' in window) {
+        const recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        
+        voiceBtn.addEventListener('click', () => {
+          if (voiceBtn.classList.contains('listening')) {
+            recognition.stop();
+            voiceBtn.classList.remove('listening');
+            voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> Start Voice Command';
+          } else {
+            recognition.start();
+            voiceBtn.classList.add('listening');
+            voiceBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Stop Listening';
+            voiceStatus.innerHTML = 'Listening...';
+          }
+        });
+        
+        recognition.onresult = (event) => {
+          const transcript = Array.from(event.results)
+            .map(result => result[0])
+            .map(result => result.transcript)
+            .join('');
+            
+          voiceStatus.innerHTML = `Command: <strong>${transcript}</strong>`;
+          
+          // Process the command
+          if (event.results[0].isFinal) {
+            processVoiceCommand(transcript);
+          }
+        };
+        
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error', event.error);
+          voiceStatus.innerHTML = `Error: ${event.error}`;
+          voiceBtn.classList.remove('listening');
+          voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> Start Voice Command';
+        };
+        
+        recognition.onend = () => {
+          if (voiceBtn.classList.contains('listening')) {
+            recognition.start();
+          }
+        };
+      } else {
+        voiceStatus.innerHTML = 'Speech recognition not supported in this browser';
+        voiceBtn.disabled = true;
+      }
+      
+      // Process voice commands
+      function processVoiceCommand(command) {
+        command = command.toLowerCase();
+        let response = '';
+        
+        // Simple command processing
+        if (command.includes('zoom in')) {
+          map.zoomIn();
+          response = 'Zooming in';
+        } else if (command.includes('zoom out')) {
+          map.zoomOut();
+          response = 'Zooming out';
+        } else if (command.includes('threat') || command.includes('enemy')) {
+          response = 'Threat detected. Displaying on map and notifying command.';
+          // Add a mock threat
+          addMockThreat();
+        } else if (command.includes('status')) {
+          response = 'All units reporting normal status. No immediate threats detected.';
+        } else if (command.includes('help') || command.includes('what can you do')) {
+          response = 'I can help you with: checking status, detecting threats, zooming in/out, and more.';
+        } else {
+          response = `Command not recognized: "${command}". Try saying "help" for available commands.`;
+        }
+        
+        // Add to console
+        addConsoleEntry(`Voice Command: ${command}`, 'info');
+        addConsoleEntry(`Response: ${response}`, 'success');
+        
+        // Update UI
+        voiceStatus.innerHTML += `<br>Response: ${response}`;
+      }
+      
+      // Add a mock threat
+      function addMockThreat() {
+        const lat = 34.0522 + (Math.random() * 0.02 - 0.01);
+        const lng = -118.2437 + (Math.random() * 0.02 - 0.01);
+        const threatId = 'threat-' + Date.now();
+        
+        // Add to map
+        L.circleMarker([lat, lng], {
+          radius: 10,
+          color: '#ff0000',
+          fillColor: '#ff3333',
+          fillOpacity: 0.5,
+          weight: 2
+        }).addTo(map);
+        
+        // Add to threats list
+        const threatElement = document.createElement('div');
+        threatElement.className = 'console-entry danger';
+        threatElement.innerHTML = `New threat detected at ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        document.getElementById('threat-list').appendChild(threatElement);
+        
+        // Add to console
+        addConsoleEntry(`New threat detected at ${lat.toFixed(4)}, ${lng.toFixed(4)}`, 'danger');
+      }
+      
+      // Add entry to console
+      function addConsoleEntry(message, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = `console-entry ${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        
+        const console = document.getElementById('console');
+        console.appendChild(entry);
+        console.scrollTop = console.scrollHeight;
+      }
+      
+      // Initialize unit list
+      function initializeUnitList() {
+        const unitList = document.getElementById('unit-list');
+        units.forEach(unit => {
+          const unitElement = document.createElement('div');
+          unitElement.className = 'console-entry';
+          unitElement.innerHTML = `
+            <span class="status-indicator status-active"></span>
+            <strong>${unit.callsign}</strong>: ${unit.status}
+          `;
+          unitList.appendChild(unitElement);
+        });
+      }
+      
+      // Initialize recommendations
+      function initializeRecommendations() {
+        const recommendations = [
+          'Monitor sector 7 for suspicious activity',
+          'Check in with Bravo team for status update',
+          'Review recent intel reports for pattern analysis'
+        ];
+        
+        const recommendationsList = document.getElementById('recommendations');
+        recommendations.forEach(rec => {
+          const recElement = document.createElement('div');
+          recElement.className = 'console-entry';
+          recElement.textContent = `• ${rec}`;
+          recommendationsList.appendChild(recElement);
+        });
+      }
+      
+      // Initialize the UI
+      initializeUnitList();
+      initializeRecommendations();
+      
+      // Add a welcome message
+      setTimeout(() => {
+        addConsoleEntry('TacSense AI ready for operation', 'success');
+        addConsoleEntry('Voice command system online', 'info');
+      }, 1000);
+    });
   </script>
 </body>
 </html>
