@@ -96,6 +96,21 @@ Retrieve a token and server URL for connecting to LiveKit.
 
 Upload a video file and provide a `query` field to search the transcript.
 
+### External Inference
+
+**POST** `/api/inference`
+
+Proxy a request to the Inflection AI inference API. Set the `INFLECTION_API_TOKEN`
+environment variable with your API token.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/api/inference \
+  -H "Content-Type: application/json" \
+  -d '{"context": [{"text": "Hi", "type": "Human"}], "config": "Pi-3.1"}'
+```
+
 ## Example Usage
 
 ### Using cURL
