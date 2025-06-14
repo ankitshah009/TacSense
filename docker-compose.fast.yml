@@ -1,0 +1,46 @@
+services:
+  # Backend service using fast PyTorch image
+  backend:
+    build:
+      context: ./python_backend
+      dockerfile: Dockerfile.fast
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount code for development
+      - ./python_backend:/usr/src/app
+    environment:
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - LIVEKIT_URL=${LIVEKIT_URL:-ws://localhost:7880}
+    networks:
+      - tacsense_network
+
+  # Frontend service using nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - tacsense_network
+
+  # LiveKit server
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+    networks:
+      - tacsense_network
+
+networks:
+  tacsense_network:
+    driver: bridge 
