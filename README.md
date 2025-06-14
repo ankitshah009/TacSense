@@ -15,7 +15,7 @@ cd backend && npm start
 ```
 
 ## Frontend
-A minimal React interface demonstrates how a web client might interact with the backend via fetch requests.
+A React-based interface now demonstrates voice analysis and provides visual feedback. The page background shifts colors based on the detected emotional state and an avatar emoji reacts to stress levels.
 
 To start the frontend:
 ```bash

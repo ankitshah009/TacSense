@@ -3,24 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <title>MindGuard</title>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(45deg,#99ddff,#88ccaa); height: 100vh; display: flex; justify-content: center; align-items: center; }
-    #app { text-align: center; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(45deg,#99ddff,#88ccaa);
+      transition: background 1s;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      backdrop-filter: blur(6px);
+    }
+    #avatar {
+      font-size: 64px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #556bda;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script type="text/javascript">
+    const { useState, useEffect } = React;
+
     function App() {
-      const [state,setState] = React.useState('');
-      const [response,setResponse] = React.useState('');
+      const [state, setState] = useState('');
+      const [response, setResponse] = useState('');
+
+      useEffect(() => {
+        if (state === 'stressed') {
+          document.body.style.background = 'linear-gradient(45deg,#ff9988,#ff5555)';
+        } else if (state === 'calm') {
+          document.body.style.background = 'linear-gradient(45deg,#99ddff,#88ccaa)';
+        }
+      }, [state]);
+
       async function analyze() {
         const res = await fetch('/analyze', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({voiceMetrics:{pitch:320,tempo:180}, heartRate:105})
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voiceMetrics: { pitch: 320, tempo: 180 }, heartRate: 105 })
         });
         const data = await res.json();
         setState(data.emotionalState);
@@ -28,14 +68,19 @@
         const d = await r.json();
         setResponse(d.response);
       }
-      return React.createElement('div', null,
-        React.createElement('h1', null, 'MindGuard Demo'),
-        React.createElement('button', {onClick: analyze}, 'Analyze'),
-        state && React.createElement('p', null, 'State: ' + state),
-        response && React.createElement('p', null, response)
-      );
+
+      const avatar = state === 'stressed' ? '😟' : '😊';
+
+      return React.createElement('div', { className: 'container' }, [
+        React.createElement('div', { id: 'avatar', key: 'a' }, avatar),
+        React.createElement('h1', { key: 'b' }, 'MindGuard Demo'),
+        React.createElement('button', { onClick: analyze, key: 'c' }, 'Analyze'),
+        state && React.createElement('p', { key: 'd' }, 'State: ' + state),
+        response && React.createElement('p', { key: 'e' }, response)
+      ]);
     }
-    ReactDOM.render(React.createElement(App), document.getElementById('app'));
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
   </script>
 </body>
 </html>
