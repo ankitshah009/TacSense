@@ -81,6 +81,12 @@ TacSense AI processes multimodal inputs to interpret commander intent, aggregate
 
 3. **Run with Docker Compose**
    ```bash
+   # Enable BuildKit's bake integration for faster builds
+   export COMPOSE_BAKE=true
+
+   # Confirm that the variable is set
+   echo $COMPOSE_BAKE    # should output "true"
+
    # Full production build
    docker-compose up --build
 
