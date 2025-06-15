@@ -18,6 +18,7 @@ import time
 from datetime import timedelta
 from moviepy.editor import VideoFileClip
 import speech_recognition as sr
+from video_analysis import summarize_video
 
 # Import TTS model (will be loaded on first request)
 model = None
@@ -396,9 +397,44 @@ async def process_video(
         
         # Cleanup temp file
         os.unlink(video_path)
-        
+
         return analysis_result
-        
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/video/inference")
+async def video_inference(video: UploadFile = File(...)):
+    """Generate a tactical summary for a video using the Pi model."""
+    try:
+        file_id = str(uuid.uuid4())
+        video_path = TEMP_DIR / f"{file_id}_{video.filename}"
+
+        with open(video_path, "wb") as buffer:
+            content = await video.read()
+            buffer.write(content)
+
+        transcript, visual_summary = summarize_video(video_path)
+
+        prompt = (
+            "Analyze the following tactical video and provide a concise summary "
+            "and recommendations.\n"
+            f"Visual summary: {visual_summary}.\n"
+            f"Transcript: {transcript}"
+        )
+
+        inference_payload = {
+            "context": [{"text": prompt, "type": "Human"}],
+            "config": "Pi-3.1",
+        }
+
+        result = call_inflection_api(inference_payload)
+
+        os.unlink(video_path)
+
+        return result
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
