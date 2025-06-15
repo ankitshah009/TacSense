@@ -13,3 +13,4 @@ moviepy==1.0.3
 SpeechRecognition==3.10.0
 pocketsphinx
 requests==2.31.0
+google-genai==1.20.0

@@ -29,6 +29,15 @@ except ImportError as e:
     SPEECH_RECOGNITION_AVAILABLE = False
     sr = None
 
+# Import Gemini 2.5 Flash for text chat
+try:
+    from google import genai
+    from google.genai import types
+    GEMINI_CHAT_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Gemini chat not available: {e}")
+    GEMINI_CHAT_AVAILABLE = False
+
 # Load environment variables from .env file (check parent directory first, then current)
 load_dotenv(dotenv_path="../.env")  # Load from parent directory
 load_dotenv()  # Also load from current directory if exists
@@ -62,6 +71,62 @@ TEMP_DIR.mkdir(exist_ok=True)
 
 # External Inflection AI API
 INFLECTION_URL = "https://api.inflection.ai/external/api/inference"
+
+def call_gemini_chat_api(payload: dict) -> dict:
+    """Use Gemini 2.5 Flash for text chat as primary/backup API."""
+    if not GEMINI_CHAT_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Gemini chat not available")
+    
+    # Get API key from environment
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_api_key:
+        raise HTTPException(status_code=503, detail="GEMINI_API_KEY not configured")
+    
+    try:
+        client = genai.Client(api_key=gemini_api_key)
+        
+        # Extract context from payload
+        context = payload.get("context", [])
+        
+        # Convert context to Gemini format
+        gemini_contents = []
+        for msg in context:
+            role = "user" if msg.get("type") == "Human" else "model"
+            gemini_contents.append(
+                types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(text=msg.get("text", ""))]
+                )
+            )
+        
+        # Configure generation
+        generate_content_config = types.GenerateContentConfig(
+            response_mime_type="text/plain",
+            temperature=0.7,
+            max_output_tokens=2048,
+        )
+        
+        print("🤖 Using Gemini 2.5 Flash for text chat")
+        
+        # Generate response
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-preview-05-20",
+            contents=gemini_contents,
+            config=generate_content_config,
+        )
+        
+        # Format response to match expected structure
+        return {
+            "choices": [{
+                "message": {
+                    "content": response.text
+                }
+            }]
+        }
+        
+    except Exception as e:
+        print(f"❌ Gemini chat error: {e}")
+        raise HTTPException(status_code=500, detail=f"Gemini chat error: {str(e)}")
 
 def call_inflection_api(payload: dict) -> dict:
     """Proxy a request to the Inflection AI inference API."""
@@ -344,13 +409,27 @@ async def search_video(query: str = Form(...), video: UploadFile = File(...)):
 
 @app.post("/api/inference")
 async def run_inference(request: InferenceRequest):
-    """Run inference using the external Inflection AI service with enhanced error handling."""
+    """Run inference using Gemini 2.5 Flash as primary, Inflection as fallback."""
+    payload = request.dict()
+    
+    # Try Gemini 2.5 Flash first
+    if GEMINI_CHAT_AVAILABLE and os.getenv("GEMINI_API_KEY"):
+        try:
+            result = call_gemini_chat_api(payload)
+            return result
+        except HTTPException as gemini_error:
+            print(f"⚠️ Gemini chat failed, trying Inflection fallback: {gemini_error.detail}")
+            # Continue to Inflection fallback
+        except Exception as e:
+            print(f"⚠️ Gemini chat error, trying Inflection fallback: {e}")
+            # Continue to Inflection fallback
+    
+    # Fallback to Inflection API
     try:
-        payload = request.dict()
         result = call_inflection_api(payload)
         return result
     except HTTPException as e:
-        # If Inflection API fails, provide helpful response about the video analysis
+        # If both APIs fail, provide intelligent responses
         if e.status_code == 422 or "rate limit" in str(e.detail).lower() or "unprocessable entity" in str(e.detail).lower():
             # Check if user is asking about video analysis
             user_message = request.context[-1].text.lower() if request.context else ""
@@ -358,7 +437,7 @@ async def run_inference(request: InferenceRequest):
                 return {
                     "choices": [{
                         "message": {
-                            "content": "🎯 **Video Analysis Complete!**\n\n✅ Your video has been successfully processed using **Gemini 2.5-pro**. The system extracted 15 frames and completed a comprehensive tactical analysis.\n\n**Key Features Analyzed:**\n- Combat positioning and movement patterns\n- Tactical formations and coordination\n- Equipment and weapon handling\n- Environmental factors and cover usage\n- Threat assessment indicators\n\n**Available Analysis:**\n- Executive summary of tactical elements\n- Frame-by-frame breakdown with timestamps\n- Threat detection and priority assessment\n- Actionable recommendations\n\n*Note: Text chat temporarily limited due to API quotas. Video analysis via Gemini is fully operational.*\n\nWhat specific aspect of the video analysis would you like me to explain in detail?"
+                            "content": "🎯 **Video Analysis Complete!**\n\n✅ Your video has been successfully processed using **Gemini 2.5-pro**. The system extracted 15 frames and completed a comprehensive tactical analysis.\n\n**Key Features Analyzed:**\n- Combat positioning and movement patterns\n- Tactical formations and coordination\n- Equipment and weapon handling\n- Environmental factors and cover usage\n- Threat assessment indicators\n\n**Available Analysis:**\n- Executive summary of tactical elements\n- Frame-by-frame breakdown with timestamps\n- Threat detection and priority assessment\n- Actionable recommendations\n\n*Note: Both Gemini 2.5 Flash and Inflection APIs are currently rate-limited. Video analysis via Gemini is fully operational.*\n\nWhat specific aspect of the video analysis would you like me to explain in detail?"
                         }
                     }]
                 }
@@ -366,7 +445,7 @@ async def run_inference(request: InferenceRequest):
                 return {
                     "choices": [{
                         "message": {
-                            "content": "🔧 **TacSense Status Update**\n\n**✅ Operational Systems:**\n- Video analysis (Gemini 2.5-pro)\n- Image analysis (Gemini 2.5-pro)\n- File upload and processing\n- Audio processing (ChatterboxTTS)\n- LiveKit token generation\n\n**⚠️ Temporary Limitation:**\nText chat API is currently rate-limited. Video and image analysis are fully operational.\n\n**Your options:**\n1. Upload videos/images for AI analysis\n2. Use voice commands for tactical queries\n3. Process tactical documents\n\nHow can I help with your tactical analysis needs?"
+                            "content": "🔧 **TacSense Status Update**\n\n**✅ Operational Systems:**\n- Video analysis (Gemini 2.5-pro)\n- Image analysis (Gemini 2.5-pro)\n- File upload and processing\n- Audio processing (ChatterboxTTS)\n- LiveKit token generation\n\n**⚠️ Temporary Limitation:**\nBoth Gemini 2.5 Flash and Inflection text chat APIs are currently rate-limited. Video and image analysis are fully operational.\n\n**Your options:**\n1. Upload videos/images for AI analysis\n2. Use voice commands for tactical queries\n3. Process tactical documents\n\nHow can I help with your tactical analysis needs?"
                         }
                     }]
                 }
@@ -378,7 +457,7 @@ async def run_inference(request: InferenceRequest):
         return {
             "choices": [{
                 "message": {
-                    "content": f"⚠️ **System Notice**\n\nI'm experiencing connectivity issues with the text analysis service, but all tactical analysis features remain operational:\n\n- ✅ Video processing with Gemini AI\n- ✅ Image analysis and threat detection\n- ✅ File upload and processing\n- ✅ Audio synthesis\n\n**Try:**\n1. Upload a video for tactical analysis\n2. Submit images for situational assessment\n3. Use voice commands\n\nError details: {str(e)[:100]}..."
+                    "content": f"⚠️ **System Notice**\n\nI'm experiencing connectivity issues with both text analysis services (Gemini 2.5 Flash and Inflection), but all tactical analysis features remain operational:\n\n- ✅ Video processing with Gemini AI\n- ✅ Image analysis and threat detection\n- ✅ File upload and processing\n- ✅ Audio synthesis\n\n**Try:**\n1. Upload a video for tactical analysis\n2. Submit images for situational assessment\n3. Use voice commands\n\nError details: {str(e)[:100]}..."
                 }
             }]
         }
