@@ -1,5 +1,5 @@
 # -------- Stage 1: Install dependencies --------
-FROM node:18-alpine AS deps
+FROM node:18 AS deps
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # -------- Stage 2: Build the application --------
-FROM node:18-alpine AS builder
+FROM node:18 AS builder
 WORKDIR /app
 
 # Copy installed node_modules from deps stage
@@ -23,7 +23,7 @@ COPY . .
 RUN npm run build
 
 # -------- Stage 3: Run the production server --------
-FROM node:18-alpine AS runner
+FROM node:18 AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -34,7 +34,7 @@ COPY package.json ./
 # Copy built application and node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/public ./public
+# Skip public directory copy as it doesn't exist
 COPY --from=builder /app/next.config.js ./next.config.js
 
 EXPOSE 3000
