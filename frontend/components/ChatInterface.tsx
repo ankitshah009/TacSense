@@ -101,14 +101,14 @@ export default function ChatInterface({
           className={cn(
             "max-w-[80%] rounded-lg px-4 py-3 shadow-sm",
             isUser 
-              ? "bg-tactical-600 text-white ml-12" 
+              ? "bg-blue-600 text-white ml-12" 
               : isSystem
               ? "bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500"
-              : "bg-military-200 text-military-900 mr-12"
+              : "bg-gray-100 text-gray-900 mr-12"
           )}
         >
           {/* Message Content */}
-          <div className="text-base">
+          <div className="text-lg">
             {isSystem || isUser ? (
               <p>{message.content}</p>
             ) : (
@@ -120,12 +120,12 @@ export default function ChatInterface({
                   ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
                   li: ({ children }) => <li className="mb-1">{children}</li>,
                   code: ({ children }) => (
-                    <code className="bg-military-700 text-tactical-300 px-1 py-0.5 rounded text-xs font-mono">
+                    <code className="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">
                       {children}
                     </code>
                   ),
                   pre: ({ children }) => (
-                    <pre className="bg-military-700 text-tactical-300 p-3 rounded-lg text-xs font-mono overflow-x-auto mb-2">
+                    <pre className="bg-gray-200 text-gray-800 p-3 rounded-lg text-sm font-mono overflow-x-auto mb-2">
                       {children}
                     </pre>
                   ),
@@ -137,7 +137,7 @@ export default function ChatInterface({
           </div>
 
           {/* Message Metadata */}
-          <div className="flex items-center justify-between mt-2 text-sm opacity-70">
+          <div className="flex items-center justify-between mt-2 text-base opacity-70">
             <span>{formatTimestamp(message.timestamp)}</span>
             
             <div className="flex items-center space-x-2">
@@ -145,10 +145,10 @@ export default function ChatInterface({
               {!isUser && !isSystem && onGenerateSpeech && (
                 <button
                   onClick={() => onGenerateSpeech(message.content)}
-                  className="p-1 text-military-400 hover:text-tactical-400 hover:bg-military-700 rounded transition-colors"
+                  className="p-1 text-gray-500 hover:text-blue-600 hover:bg-gray-200 rounded transition-colors"
                   title="Generate speech for this message"
                 >
-                  <Volume2Icon className="w-3 h-3" />
+                  <Volume2Icon className="w-4 h-4" />
                 </button>
               )}
               
@@ -178,7 +178,7 @@ export default function ChatInterface({
 
           {/* Voice Metrics (if available) */}
           {message.metadata?.voiceMetrics && (
-            <div className="mt-2 p-2 bg-military-100 rounded text-xs">
+            <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div>Pitch: {message.metadata.voiceMetrics.pitch.toFixed(1)} Hz</div>
                 <div>Tempo: {message.metadata.voiceMetrics.tempo.toFixed(1)} BPM</div>
@@ -206,17 +206,17 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4 bg-white">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-military-400">
-              <div className="w-16 h-16 bg-military-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MicIcon className="w-8 h-8" />
+            <div className="text-center text-gray-600">
+              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MicIcon className="w-8 h-8 text-white" />
               </div>
-              <p className="text-xl font-medium mb-2">TacSense AI Ready</p>
-              <p className="text-base">
+              <p className="text-2xl font-medium mb-2 text-gray-800">TacSense AI Ready</p>
+              <p className="text-lg text-gray-600">
                 Upload a file or start asking questions for tactical analysis
               </p>
             </div>
@@ -228,10 +228,10 @@ export default function ChatInterface({
             {/* Loading indicator */}
             {isLoading && (
               <div className="flex justify-start mb-4">
-                <div className="bg-military-200 text-military-900 max-w-[80%] rounded-lg px-4 py-3 mr-12">
+                <div className="bg-gray-200 text-gray-900 max-w-[80%] rounded-lg px-4 py-3 mr-12">
                   <div className="flex items-center space-x-2">
-                    <LoaderIcon className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Analyzing...</span>
+                    <LoaderIcon className="w-5 h-5 animate-spin" />
+                    <span className="text-lg">Analyzing...</span>
                   </div>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-military-600 p-4 bg-military-800">
+      <div className="border-t border-gray-300 p-4 bg-white">
         <form onSubmit={handleSubmit} className="flex space-x-2">
           <div className="flex-1 relative">
             <input
@@ -255,8 +255,8 @@ export default function ChatInterface({
               placeholder={getPlaceholderText()}
               disabled={isLoading}
               className={cn(
-                "w-full bg-military-700 border border-military-600 rounded-lg px-4 py-3 pr-12",
-                "text-white placeholder-military-400 focus:outline-none focus:border-tactical-500",
+                "w-full bg-white border border-gray-300 rounded-lg px-4 py-3 pr-12 text-lg",
+                "text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
             />
@@ -268,8 +268,8 @@ export default function ChatInterface({
               className={cn(
                 "absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-colors",
                 showAudioRecorder
-                  ? "bg-tactical-600 text-white"
-                  : "text-military-400 hover:text-tactical-400 hover:bg-military-600"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-500 hover:text-blue-600 hover:bg-gray-100"
               )}
               title={showAudioRecorder ? "Hide audio recorder" : "Show audio recorder"}
             >
@@ -281,10 +281,10 @@ export default function ChatInterface({
             type="submit"
             disabled={!currentInput.trim() || isLoading}
             className={cn(
-              "px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2",
+              "px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2 text-lg",
               !currentInput.trim() || isLoading
-                ? "bg-military-700 text-military-500 cursor-not-allowed"
-                : "bg-tactical-600 hover:bg-tactical-700 text-white"
+                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
             )}
           >
             {isLoading ? (
@@ -311,25 +311,25 @@ export default function ChatInterface({
         <div className="flex flex-wrap gap-2 mt-3">
           <button
             onClick={() => onInputChange("What are the main safety concerns in this content?")}
-            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-gray-900 rounded-full text-base transition-colors"
           >
             Safety Analysis
           </button>
           <button
             onClick={() => onInputChange("Identify any tactical threats or anomalies")}
-            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-gray-900 rounded-full text-base transition-colors"
           >
             Threat Assessment
           </button>
           <button
             onClick={() => onInputChange("Summarize the key operational insights")}
-            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-gray-900 rounded-full text-base transition-colors"
           >
             Operational Summary
           </button>
           <button
             onClick={() => onInputChange("What recommendations do you have?")}
-            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-gray-900 rounded-full text-base transition-colors"
           >
             Recommendations
           </button>
@@ -338,7 +338,7 @@ export default function ChatInterface({
           {onGenerateSpeech && (
             <button
               onClick={() => onGenerateSpeech("Hello, this is a test of the text to speech system.")}
-              className="px-4 py-2 bg-tactical-700 hover:bg-tactical-600 text-white rounded-full text-sm transition-colors flex items-center space-x-1"
+              className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-full text-base transition-colors flex items-center space-x-1"
               title="Test TTS functionality"
             >
               <Volume2Icon className="w-4 h-4" />
