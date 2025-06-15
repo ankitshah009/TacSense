@@ -9,7 +9,7 @@ import {
 } from '@/types';
 
 const API_BASE_URL = process.env.NODE_ENV === 'development' 
-  ? 'http://localhost:8000/api' 
+  ? 'http://127.0.0.1:8000/api' 
   : '/api';
 
 const apiClient = axios.create({
