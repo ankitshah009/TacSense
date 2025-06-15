@@ -230,6 +230,81 @@ export class TacSenseAPI {
     }
   }
 
+  // Audio Recording and Analysis API
+  static async analyzeAudio(
+    audioBlob: Blob,
+    options: {
+      transcribeAudio?: boolean;
+      analyzeEmotion?: boolean;
+      detectKeywords?: boolean;
+      customPrompt?: string;
+    } = {}
+  ): Promise<{
+    transcription?: string;
+    analysis?: {
+      intent: string;
+      sentiment: string;
+      urgency: string;
+      confidence: number;
+      keywords: string[];
+      emotional_state?: string;
+      stress_level?: string;
+    };
+    voice_metrics?: {
+      pitch: number;
+      tempo: number;
+      intensity: number;
+      duration: number;
+    };
+    tactical_assessment?: {
+      threat_level: string;
+      command_type: string;
+      priority: string;
+      recommendations: string[];
+    };
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'tactical-audio.webm');
+      
+      if (options.transcribeAudio !== false) formData.append('transcribe', 'true');
+      if (options.analyzeEmotion) formData.append('analyze_emotion', 'true');
+      if (options.detectKeywords) formData.append('detect_keywords', 'true');
+      if (options.customPrompt) formData.append('custom_prompt', options.customPrompt);
+
+      const response = await apiClient.post('/audio/analyze', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 60000, // 1 minute for audio processing
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Analyze audio error:', error);
+      throw error;
+    }
+  }
+
+  static async transcribeAudio(audioBlob: Blob): Promise<{ transcription: string; confidence: number }> {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio-transcription.webm');
+
+      const response = await apiClient.post('/audio/transcribe', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 60000,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Transcribe audio error:', error);
+      throw error;
+    }
+  }
+
   // Text Analysis API
   static async analyzeText(text: string): Promise<{
     intent: string;

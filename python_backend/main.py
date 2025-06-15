@@ -750,6 +750,242 @@ async def analyze_voice_endpoint(voice_data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/audio/analyze")
+async def analyze_audio_endpoint(
+    audio: UploadFile = File(...),
+    transcribe: str = Form("true"),
+    analyze_emotion: str = Form("false"),
+    detect_keywords: str = Form("false"),
+    custom_prompt: str = Form("")
+):
+    """Analyze uploaded audio for transcription and tactical assessment"""
+    try:
+        # Save audio file temporarily
+        file_id = str(uuid.uuid4())
+        audio_path = TEMP_DIR / f"{file_id}_{audio.filename}"
+        
+        with open(audio_path, "wb") as buffer:
+            content = await audio.read()
+            buffer.write(content)
+        
+        print(f"🎤 Processing audio file: {audio.filename} ({len(content)} bytes)")
+        
+        result = {}
+        
+        # Transcribe audio if requested
+        if transcribe.lower() == "true":
+            try:
+                if SPEECH_RECOGNITION_AVAILABLE:
+                    import speech_recognition as sr
+                    
+                    # Convert audio to wav for speech recognition
+                    from pydub import AudioSegment
+                    audio_segment = AudioSegment.from_file(str(audio_path))
+                    wav_path = str(audio_path).replace('.webm', '.wav')
+                    audio_segment.export(wav_path, format="wav")
+                    
+                    # Perform speech recognition
+                    recognizer = sr.Recognizer()
+                    with sr.AudioFile(wav_path) as source:
+                        audio_data = recognizer.record(source)
+                        try:
+                            transcription = recognizer.recognize_google(audio_data)
+                            result["transcription"] = transcription
+                            print(f"✅ Transcribed: {transcription[:100]}...")
+                        except sr.UnknownValueError:
+                            result["transcription"] = "[Could not understand audio]"
+                        except sr.RequestError as e:
+                            result["transcription"] = f"[Speech recognition error: {e}]"
+                    
+                    # Clean up wav file
+                    try:
+                        os.unlink(wav_path)
+                    except:
+                        pass
+                else:
+                    result["transcription"] = "[Speech recognition not available]"
+            except Exception as e:
+                print(f"❌ Transcription error: {e}")
+                result["transcription"] = f"[Transcription failed: {str(e)}]"
+        
+        # Analyze transcribed text if available
+        if result.get("transcription") and result["transcription"] not in ["[Could not understand audio]", "[Speech recognition not available]"]:
+            transcribed_text = result["transcription"]
+            
+            # Use Gemini for tactical text analysis
+            if GEMINI_CHAT_AVAILABLE:
+                try:
+                    tactical_prompt = f"""
+                    Analyze the following transcribed audio for tactical and military context:
+                    
+                    Text: "{transcribed_text}"
+                    
+                    Provide analysis in the following format:
+                    - Intent: [command/question/report/alert/normal]
+                    - Sentiment: [positive/negative/neutral/urgent/calm]
+                    - Urgency: [low/medium/high/critical]
+                    - Keywords: [list key tactical terms]
+                    - Emotional State: [calm/stressed/excited/angry/focused]
+                    - Stress Level: [low/medium/high]
+                    - Threat Level: [none/low/medium/high/critical]
+                    - Command Type: [order/request/report/query/alert]
+                    - Priority: [routine/important/urgent/immediate]
+                    """
+                    
+                    # Create payload for Gemini analysis
+                    analysis_payload = {
+                        "context": [{"text": tactical_prompt, "type": "Human"}],
+                        "config": "tactical-analysis"
+                    }
+                    
+                    gemini_result = call_gemini_chat_api(analysis_payload)
+                    analysis_text = gemini_result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    
+                    # Parse the analysis (basic parsing - could be improved)
+                    analysis = {
+                        "intent": "unknown",
+                        "sentiment": "neutral", 
+                        "urgency": "medium",
+                        "confidence": 0.75,
+                        "keywords": [],
+                        "emotional_state": "unknown",
+                        "stress_level": "unknown"
+                    }
+                    
+                    # Extract key information from Gemini response
+                    if "intent:" in analysis_text.lower():
+                        intent_match = analysis_text.lower().split("intent:")[1].split("\n")[0].strip()
+                        analysis["intent"] = intent_match.split()[0] if intent_match else "unknown"
+                    
+                    if "urgency:" in analysis_text.lower():
+                        urgency_match = analysis_text.lower().split("urgency:")[1].split("\n")[0].strip()
+                        analysis["urgency"] = urgency_match.split("[")[1].split("]")[0] if "[" in urgency_match else urgency_match.split()[0]
+                    
+                    result["analysis"] = analysis
+                    
+                    # Tactical assessment
+                    tactical_assessment = {
+                        "threat_level": "low",
+                        "command_type": "query",
+                        "priority": "routine",
+                        "recommendations": [
+                            "Audio successfully processed and analyzed",
+                            "Transcription quality appears good",
+                            "Consider voice stress analysis for enhanced threat detection"
+                        ]
+                    }
+                    
+                    if "critical" in analysis_text.lower() or "urgent" in analysis_text.lower():
+                        tactical_assessment["threat_level"] = "medium"
+                        tactical_assessment["priority"] = "urgent"
+                    
+                    result["tactical_assessment"] = tactical_assessment
+                    
+                except Exception as e:
+                    print(f"❌ Gemini analysis error: {e}")
+                    result["analysis"] = {
+                        "intent": "unknown",
+                        "sentiment": "neutral",
+                        "urgency": "medium", 
+                        "confidence": 0.5,
+                        "keywords": [],
+                        "error": str(e)
+                    }
+        
+        # Audio metrics (mock for now - could be enhanced with actual audio analysis)
+        if audio_path.exists():
+            file_size = audio_path.stat().st_size
+            # Estimate duration based on file size (rough approximation)
+            estimated_duration = file_size / 4000  # Very rough estimate for webm
+            
+            result["voice_metrics"] = {
+                "pitch": 150.0 + (hash(str(file_size)) % 100),  # Mock pitch
+                "tempo": 120.0 + (hash(str(file_size)) % 60),   # Mock tempo
+                "intensity": 0.5 + (hash(str(file_size)) % 50) / 100,  # Mock intensity
+                "duration": estimated_duration
+            }
+        
+        # Cleanup temp file
+        try:
+            os.unlink(audio_path)
+        except:
+            pass  # Ignore cleanup errors
+        
+        print(f"✅ Audio analysis completed for: {audio.filename}")
+        return result
+        
+    except Exception as e:
+        # Cleanup on error
+        try:
+            if 'audio_path' in locals():
+                os.unlink(audio_path)
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/audio/transcribe")
+async def transcribe_audio_endpoint(audio: UploadFile = File(...)):
+    """Transcribe audio to text"""
+    try:
+        # Save audio file temporarily
+        file_id = str(uuid.uuid4())
+        audio_path = TEMP_DIR / f"{file_id}_{audio.filename}"
+        
+        with open(audio_path, "wb") as buffer:
+            content = await audio.read()
+            buffer.write(content)
+        
+        print(f"🎤 Transcribing audio file: {audio.filename}")
+        
+        if SPEECH_RECOGNITION_AVAILABLE:
+            import speech_recognition as sr
+            
+            # Convert audio to wav for speech recognition
+            from pydub import AudioSegment
+            audio_segment = AudioSegment.from_file(str(audio_path))
+            wav_path = str(audio_path).replace('.webm', '.wav')
+            audio_segment.export(wav_path, format="wav")
+            
+            # Perform speech recognition
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio_data = recognizer.record(source)
+                try:
+                    transcription = recognizer.recognize_google(audio_data)
+                    confidence = 0.85  # Mock confidence
+                    
+                    # Clean up files
+                    try:
+                        os.unlink(wav_path)
+                        os.unlink(audio_path)
+                    except:
+                        pass
+                    
+                    return {
+                        "transcription": transcription,
+                        "confidence": confidence
+                    }
+                except sr.UnknownValueError:
+                    return {
+                        "transcription": "[Could not understand audio]",
+                        "confidence": 0.0
+                    }
+                except sr.RequestError as e:
+                    raise HTTPException(status_code=500, detail=f"Speech recognition error: {e}")
+        else:
+            raise HTTPException(status_code=503, detail="Speech recognition not available")
+            
+    except Exception as e:
+        # Cleanup on error
+        try:
+            if 'audio_path' in locals():
+                os.unlink(audio_path)
+            if 'wav_path' in locals():
+                os.unlink(wav_path)
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

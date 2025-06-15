@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 
 import { Message, TabType } from '@/types';
 import { formatTimestamp, cn, getUrgencyColor, getConfidenceColor } from '@/lib/utils';
+import AudioRecorder from './AudioRecorder';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -15,6 +16,7 @@ interface ChatInterfaceProps {
   onGenerateSpeech?: (text: string) => void;
   isLoading: boolean;
   activeTab: TabType;
+  onAudioAnalysis?: (analysis: any) => void;
 }
 
 export default function ChatInterface({
@@ -24,11 +26,13 @@ export default function ChatInterface({
   onSendMessage,
   onGenerateSpeech,
   isLoading,
-  activeTab
+  activeTab,
+  onAudioAnalysis
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
   useEffect(() => {
     scrollToBottom();
@@ -60,8 +64,25 @@ export default function ChatInterface({
   };
 
   const toggleVoiceInput = () => {
-    setIsVoiceActive(!isVoiceActive);
-    // TODO: Implement voice recognition
+    setShowAudioRecorder(!showAudioRecorder);
+  };
+
+  const handleAudioTranscription = (transcription: string) => {
+    // Set the transcribed text as input
+    onInputChange(transcription);
+    setShowAudioRecorder(false);
+  };
+
+  const handleAudioAnalysis = (analysis: any) => {
+    // Handle audio analysis results
+    if (onAudioAnalysis) {
+      onAudioAnalysis(analysis);
+    }
+    
+    // If we have a transcription, also set it as input
+    if (analysis.transcription) {
+      onInputChange(analysis.transcription);
+    }
   };
 
   const renderMessage = (message: Message) => {
@@ -240,19 +261,19 @@ export default function ChatInterface({
               )}
             />
             
-            {/* Voice Input Button */}
+            {/* Audio Input Button */}
             <button
               type="button"
               onClick={toggleVoiceInput}
               className={cn(
                 "absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-colors",
-                isVoiceActive
-                  ? "bg-danger-600 text-white"
+                showAudioRecorder
+                  ? "bg-tactical-600 text-white"
                   : "text-military-400 hover:text-tactical-400 hover:bg-military-600"
               )}
-              title={isVoiceActive ? "Stop voice input" : "Start voice input"}
+              title={showAudioRecorder ? "Hide audio recorder" : "Show audio recorder"}
             >
-              {isVoiceActive ? <VolumeXIcon className="w-4 h-4" /> : <MicIcon className="w-4 h-4" />}
+              <MicIcon className="w-4 h-4" />
             </button>
           </div>
 
@@ -274,6 +295,17 @@ export default function ChatInterface({
             <span>Ask</span>
           </button>
         </form>
+
+        {/* Audio Recorder */}
+        {showAudioRecorder && (
+          <div className="mt-4">
+            <AudioRecorder
+              onTranscriptionReceived={handleAudioTranscription}
+              onAnalysisReceived={handleAudioAnalysis}
+              compact={false}
+            />
+          </div>
+        )}
         
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 mt-3">
