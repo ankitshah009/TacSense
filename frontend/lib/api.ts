@@ -217,7 +217,14 @@ export class TacSenseAPI {
     confidence: number;
   }> {
     try {
-      const response = await apiClient.post('/text/analyze', { text });
+      const formData = new FormData();
+      formData.append('text', text);
+
+      const response = await apiClient.post('/text/analyze', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       console.error('Analyze text error:', error);

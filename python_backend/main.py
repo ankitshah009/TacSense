@@ -17,7 +17,29 @@ from livekit.api import AccessToken
 import time
 from datetime import timedelta
 from moviepy.editor import VideoFileClip
-import speech_recognition as sr
+import asyncio
+from dotenv import load_dotenv
+
+# Optional speech recognition import
+try:
+    import speech_recognition as sr
+    SPEECH_RECOGNITION_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Speech recognition not available: {e}")
+    SPEECH_RECOGNITION_AVAILABLE = False
+    sr = None
+
+# Load environment variables from .env file (check parent directory first, then current)
+load_dotenv(dotenv_path="../.env")  # Load from parent directory
+load_dotenv()  # Also load from current directory if exists
+
+# Import our video analysis engine
+try:
+    from video_analysis_engine import GeminiVideoAnalyzer, setup_gemini_analyzer
+    GEMINI_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Gemini video analysis not available: {e}")
+    GEMINI_AVAILABLE = False
 
 # Import TTS model (will be loaded on first request)
 model = None
@@ -45,7 +67,16 @@ def call_inflection_api(payload: dict) -> dict:
     """Proxy a request to the Inflection AI inference API."""
     token = os.getenv("INFLECTION_API_TOKEN")
     if not token:
-        raise HTTPException(status_code=500, detail="Inflection API token not configured")
+        # Return mock response for local testing
+        print("⚠️  INFLECTION_API_TOKEN not configured, returning mock response for local testing")
+        print(f"🔍 Debug: Available environment variables: {[k for k in os.environ.keys() if 'INFLECTION' in k or 'API' in k]}")
+        return {
+            "choices": [{
+                "message": {
+                    "content": "🔧 **TacSense AI Local Mode**\n\nI'm running in local testing mode without external AI services. To enable full functionality:\n\n1. Get an Inflection AI API token\n2. Set the `INFLECTION_API_TOKEN` environment variable\n3. Restart the backend service\n\nFor now, I can help with:\n- File upload and processing\n- Text-to-speech generation\n- Basic system status\n- LiveKit token generation\n\nWhat would you like to test?"
+                }
+            }]
+        }
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -215,46 +246,49 @@ async def generate_speech(
     - audio_prompt: Optional audio file for voice cloning
     """
     try:
-        # Load model on first request
-        model = load_model()
+        # MOCK MODE: Quick response for development/testing
+        print(f"🎤 TTS Mock: Generating speech for: '{text[:50]}{'...' if len(text) > 50 else ''}'")
         
-        # Save audio prompt if provided
-        audio_prompt_path = None
-        if audio_prompt:
-            # Create temp file for the audio prompt
-            temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-            audio_prompt_path = temp_audio.name
-            
-            # Convert to WAV if needed
-            audio = AudioSegment.from_file(io.BytesIO(await audio_prompt.read()))
-            audio.export(audio_prompt_path, format="wav")
+        # Create a simple mock audio file (short beep sound)
+        import numpy as np
+        import wave
         
-        # Generate speech
-        with torch.no_grad():
-            wav = model.generate(
-                text,
-                audio_prompt_path=audio_prompt_path,
-                exaggeration=float(exaggeration),
-                cfg=float(cfg)
-            )
+        # Generate a simple 1-second tone at 440Hz (A note)
+        sample_rate = 22050
+        duration = 1.0  # seconds
+        frequency = 440  # Hz
         
-        # Save to temp file
-        output_filename = f"tts_{uuid.uuid4()}.wav"
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        # Create a sine wave that fades in and out to avoid clicks
+        audio_data = np.sin(2 * np.pi * frequency * t)
+        fade_samples = int(0.05 * sample_rate)  # 50ms fade
+        audio_data[:fade_samples] *= np.linspace(0, 1, fade_samples)
+        audio_data[-fade_samples:] *= np.linspace(1, 0, fade_samples)
+        
+        # Convert to 16-bit integers
+        audio_data = (audio_data * 32767).astype(np.int16)
+        
+        # Save as WAV file
+        output_filename = f"tts_mock_{uuid.uuid4()}.wav"
         output_path = TEMP_DIR / output_filename
-        ta.save(str(output_path), wav, model.sr)
         
-        # Clean up temp audio prompt if it exists
-        if audio_prompt_path and os.path.exists(audio_prompt_path):
-            os.unlink(audio_prompt_path)
+        with wave.open(str(output_path), 'w') as wav_file:
+            wav_file.setnchannels(1)  # mono
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_data.tobytes())
         
         return JSONResponse({
             "status": "success",
             "audio_url": f"/api/tts/audio/{output_filename}",
-            "text": text
+            "text": text,
+            "mock": True,
+            "message": "Mock TTS: Generated tone instead of speech"
         })
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"TTS Mock Error: {e}")
+        raise HTTPException(status_code=500, detail=f"TTS Mock Error: {str(e)}")
 
 @app.get("/api/tts/audio/{filename}")
 async def get_audio(filename: str):
@@ -344,7 +378,7 @@ async def process_video(
     caption_prompt: str = Form(""),
     summary_prompt: str = Form("")
 ):
-    """Process video file for tactical analysis"""
+    """Process video file for tactical analysis using Gemini 2.5-pro"""
     try:
         # Save video file temporarily
         file_id = str(uuid.uuid4())
@@ -354,60 +388,97 @@ async def process_video(
             content = await video.read()
             buffer.write(content)
         
-        # Mock processing (in real implementation, would extract frames, analyze, etc.)
-        import time
-        time.sleep(2)  # Simulate processing time
-        
-        # Mock analysis results
-        analysis_result = {
-            "summary": "Tactical video analysis completed. Detected personnel movement, equipment usage, and environmental factors. No immediate threats identified.",
-            "insights": [
-                {
-                    "id": "insight_1",
-                    "type": "tactical",
-                    "title": "Personnel Movement",
-                    "description": "Multiple personnel observed in coordinated movement patterns",
-                    "confidence": 0.89,
-                    "priority": "medium"
-                },
-                {
-                    "id": "insight_2", 
-                    "type": "operational",
-                    "title": "Equipment Status",
-                    "description": "Standard tactical equipment detected and properly utilized",
-                    "confidence": 0.92,
-                    "priority": "low"
-                }
-            ],
-            "threats": [],
-            "recommendations": [
-                {
-                    "id": "rec_1",
-                    "type": "tactical",
-                    "priority": "medium",
-                    "title": "Continue Monitoring",
-                    "description": "Maintain surveillance of personnel movement patterns",
-                    "confidence": 0.85
-                }
-            ],
-            "confidence": 0.88,
-            "timestamp": time.time()
-        }
+        # Use Gemini analysis if available
+        if GEMINI_AVAILABLE:
+            try:
+                # Set up Gemini analyzer with API key
+                gemini_api_key = "AIzaSyCfm2xX5Lsnpcq18u4Hzv3zbbXkEFbHn44"
+                analyzer = GeminiVideoAnalyzer(gemini_api_key)
+                
+                print(f"🎬 Starting Gemini video analysis for: {video.filename}")
+                
+                # Perform comprehensive video analysis
+                analysis_result = await analyzer.comprehensive_video_analysis(
+                    str(video_path), 
+                    max_frames=15  # Extract 15 frames for analysis
+                )
+                
+                # Add additional metadata
+                analysis_result.update({
+                    "file_id": file_id,
+                    "filename": video.filename,
+                    "processing_method": "gemini-2.5-pro",
+                    "chunk_size": chunk_size,
+                    "custom_prompt": prompt or caption_prompt or summary_prompt
+                })
+                
+                print(f"✅ Gemini video analysis completed for: {video.filename}")
+                
+            except Exception as gemini_error:
+                print(f"❌ Gemini analysis failed: {gemini_error}")
+                # Fallback to mock analysis
+                analysis_result = create_mock_video_analysis(video.filename)
+                analysis_result["processing_method"] = "mock-fallback"
+                analysis_result["gemini_error"] = str(gemini_error)
+        else:
+            # Use mock analysis if Gemini not available
+            analysis_result = create_mock_video_analysis(video.filename)
+            analysis_result["processing_method"] = "mock-only"
         
         # Cleanup temp file
-        os.unlink(video_path)
+        try:
+            os.unlink(video_path)
+        except:
+            pass  # Ignore cleanup errors
         
         return analysis_result
         
     except Exception as e:
+        # Cleanup on error
+        try:
+            if 'video_path' in locals():
+                os.unlink(video_path)
+        except:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
+
+def create_mock_video_analysis(filename: str) -> dict:
+    """Create mock video analysis results"""
+    return {
+        "video_path": filename,
+        "analysis_timestamp": time.time(),
+        "executive_summary": "Mock tactical video analysis completed. This is a placeholder response while Gemini integration is being configured.",
+        "overall_confidence": 0.75,
+        "total_frames_analyzed": 10,
+        "analysis_duration": "5.2s",
+        "detailed_analysis": {
+            "summary": f"Processed video file: {filename}. Mock analysis detected standard operational activities with no immediate threats identified.",
+            "confidence_score": 0.75
+        },
+        "insights": [
+            {
+                "id": "mock_insight_1",
+                "type": "tactical",
+                "title": "Standard Operations",
+                "description": "Normal operational activities observed throughout video",
+                "confidence": 0.80,
+                "priority": "low",
+                "timestamp": 0.0
+            }
+        ],
+        "threats": [],
+        "recommendations": [
+            "Configure Gemini API key for enhanced video analysis",
+            "Upload tactical training videos for better analysis results"
+        ]
+    }
 
 @app.post("/api/image/analyze")
 async def analyze_image(
     image: UploadFile = File(...),
     prompt: str = Form("")
 ):
-    """Analyze image for tactical information"""
+    """Analyze image for tactical information using Gemini 2.5-pro"""
     try:
         # Save image file temporarily
         file_id = str(uuid.uuid4())
@@ -417,29 +488,86 @@ async def analyze_image(
             content = await image.read()
             buffer.write(content)
         
-        # Mock image analysis
-        analysis_result = {
-            "objects": [
-                {"type": "person", "confidence": 0.92, "position": {"x": 100, "y": 150}},
-                {"type": "vehicle", "confidence": 0.87, "position": {"x": 300, "y": 200}}
-            ],
-            "threats": [],
-            "insights": [
-                {
-                    "type": "operational",
-                    "description": "Clear visibility conditions, multiple subjects identified",
-                    "confidence": 0.90
-                }
-            ]
-        }
+        # Use Gemini analysis if available
+        if GEMINI_AVAILABLE:
+            try:
+                # Set up Gemini analyzer with API key
+                gemini_api_key = "AIzaSyCfm2xX5Lsnpcq18u4Hzv3zbbXkEFbHn44"
+                analyzer = GeminiVideoAnalyzer(gemini_api_key)
+                
+                print(f"🖼️  Starting Gemini image analysis for: {image.filename}")
+                
+                # Use custom prompt if provided, otherwise use default tactical analysis
+                context_prompt = prompt if prompt else ""
+                
+                # Perform image analysis
+                analysis_result = await analyzer.analyze_image_with_context(
+                    str(image_path), 
+                    context_prompt
+                )
+                
+                # Add additional metadata
+                analysis_result.update({
+                    "file_id": file_id,
+                    "filename": image.filename,
+                    "processing_method": "gemini-2.5-pro",
+                    "custom_prompt": prompt
+                })
+                
+                print(f"✅ Gemini image analysis completed for: {image.filename}")
+                
+            except Exception as gemini_error:
+                print(f"❌ Gemini image analysis failed: {gemini_error}")
+                # Fallback to mock analysis
+                analysis_result = create_mock_image_analysis(image.filename)
+                analysis_result["processing_method"] = "mock-fallback"
+                analysis_result["gemini_error"] = str(gemini_error)
+        else:
+            # Use mock analysis if Gemini not available
+            analysis_result = create_mock_image_analysis(image.filename)
+            analysis_result["processing_method"] = "mock-only"
         
         # Cleanup temp file
-        os.unlink(image_path)
+        try:
+            os.unlink(image_path)
+        except:
+            pass  # Ignore cleanup errors
         
         return analysis_result
         
     except Exception as e:
+        # Cleanup on error
+        try:
+            if 'image_path' in locals():
+                os.unlink(image_path)
+        except:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
+
+def create_mock_image_analysis(filename: str) -> dict:
+    """Create mock image analysis results"""
+    return {
+        "image_path": filename,
+        "analysis_timestamp": time.time(),
+        "tactical_assessment": f"Mock tactical analysis of {filename}. Standard operational environment detected with no immediate threats identified.",
+        "confidence_score": 0.75,
+        "objects": [
+            {"type": "person", "confidence": 0.85, "position": {"x": 100, "y": 150}},
+            {"type": "equipment", "confidence": 0.78, "position": {"x": 300, "y": 200}}
+        ],
+        "threats": [],
+        "insights": [
+            {
+                "type": "operational",
+                "description": "Clear visibility conditions, standard operational setup identified",
+                "confidence": 0.80
+            }
+        ],
+        "recommendations": [
+            "Configure Gemini API key for enhanced image analysis",
+            "Provide specific tactical context for better analysis results"
+        ]
+    }
 
 @app.post("/api/text/analyze")
 async def analyze_text_endpoint(text: str = Form(...)):

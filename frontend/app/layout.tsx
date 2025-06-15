@@ -10,8 +10,9 @@ export const metadata: Metadata = {
   description: 'AI-driven multimodal situational awareness system for military commanders integrating voice, text, and visual intelligence.',
   keywords: ['AI', 'Military', 'Situational Awareness', 'Voice Recognition', 'Computer Vision', 'Command and Control'],
   authors: [{ name: 'TacSense AI Team' }],
-  viewport: 'width=device-width, initial-scale=1',
 }
+
+export const viewport = 'width=device-width, initial-scale=1'
 
 export default function RootLayout({
   children,

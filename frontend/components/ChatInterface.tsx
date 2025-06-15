@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { SendIcon, MicIcon, LoaderIcon, PlayIcon, VolumeXIcon } from 'lucide-react';
+import { SendIcon, MicIcon, LoaderIcon, PlayIcon, VolumeXIcon, Volume2Icon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { Message, TabType } from '@/types';
@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
   currentInput: string;
   onInputChange: (value: string) => void;
   onSendMessage: (message: string) => void;
+  onGenerateSpeech?: (text: string) => void;
   isLoading: boolean;
   activeTab: TabType;
 }
@@ -21,6 +22,7 @@ export default function ChatInterface({
   currentInput,
   onInputChange,
   onSendMessage,
+  onGenerateSpeech,
   isLoading,
   activeTab
 }: ChatInterfaceProps) {
@@ -85,7 +87,7 @@ export default function ChatInterface({
           )}
         >
           {/* Message Content */}
-          <div className="text-sm">
+          <div className="text-base">
             {isSystem || isUser ? (
               <p>{message.content}</p>
             ) : (
@@ -114,30 +116,43 @@ export default function ChatInterface({
           </div>
 
           {/* Message Metadata */}
-          <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+          <div className="flex items-center justify-between mt-2 text-sm opacity-70">
             <span>{formatTimestamp(message.timestamp)}</span>
             
-            {message.metadata && (
-              <div className="flex items-center space-x-2">
-                {message.metadata.confidence && (
-                  <span className={getConfidenceColor(message.metadata.confidence)}>
-                    {Math.round(message.metadata.confidence * 100)}%
-                  </span>
-                )}
-                
-                {message.metadata.urgency && (
-                  <span className={getUrgencyColor(message.metadata.urgency)}>
-                    {message.metadata.urgency.toUpperCase()}
-                  </span>
-                )}
-                
-                {message.metadata.intent && (
-                  <span className="text-military-500">
-                    {message.metadata.intent}
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              {/* TTS Button for assistant messages */}
+              {!isUser && !isSystem && onGenerateSpeech && (
+                <button
+                  onClick={() => onGenerateSpeech(message.content)}
+                  className="p-1 text-military-400 hover:text-tactical-400 hover:bg-military-700 rounded transition-colors"
+                  title="Generate speech for this message"
+                >
+                  <Volume2Icon className="w-3 h-3" />
+                </button>
+              )}
+              
+              {message.metadata && (
+                <div className="flex items-center space-x-2">
+                  {message.metadata.confidence && (
+                    <span className={getConfidenceColor(message.metadata.confidence)}>
+                      {Math.round(message.metadata.confidence * 100)}%
+                    </span>
+                  )}
+                  
+                  {message.metadata.urgency && (
+                    <span className={getUrgencyColor(message.metadata.urgency)}>
+                      {message.metadata.urgency.toUpperCase()}
+                    </span>
+                  )}
+                  
+                  {message.metadata.intent && (
+                    <span className="text-military-500">
+                      {message.metadata.intent}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Voice Metrics (if available) */}
@@ -179,8 +194,8 @@ export default function ChatInterface({
               <div className="w-16 h-16 bg-military-700 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MicIcon className="w-8 h-8" />
               </div>
-              <p className="text-lg font-medium mb-2">TacSense AI Ready</p>
-              <p className="text-sm">
+              <p className="text-xl font-medium mb-2">TacSense AI Ready</p>
+              <p className="text-base">
                 Upload a file or start asking questions for tactical analysis
               </p>
             </div>
@@ -264,28 +279,40 @@ export default function ChatInterface({
         <div className="flex flex-wrap gap-2 mt-3">
           <button
             onClick={() => onInputChange("What are the main safety concerns in this content?")}
-            className="px-3 py-1 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-xs transition-colors"
+            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
           >
             Safety Analysis
           </button>
           <button
             onClick={() => onInputChange("Identify any tactical threats or anomalies")}
-            className="px-3 py-1 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-xs transition-colors"
+            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
           >
             Threat Assessment
           </button>
           <button
             onClick={() => onInputChange("Summarize the key operational insights")}
-            className="px-3 py-1 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-xs transition-colors"
+            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
           >
             Operational Summary
           </button>
           <button
             onClick={() => onInputChange("What recommendations do you have?")}
-            className="px-3 py-1 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-xs transition-colors"
+            className="px-4 py-2 bg-military-700 hover:bg-military-600 text-military-300 hover:text-white rounded-full text-sm transition-colors"
           >
             Recommendations
           </button>
+          
+          {/* TTS Test Button */}
+          {onGenerateSpeech && (
+            <button
+              onClick={() => onGenerateSpeech("Hello, this is a test of the text to speech system.")}
+              className="px-4 py-2 bg-tactical-700 hover:bg-tactical-600 text-white rounded-full text-sm transition-colors flex items-center space-x-1"
+              title="Test TTS functionality"
+            >
+              <Volume2Icon className="w-4 h-4" />
+              <span>Test TTS</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

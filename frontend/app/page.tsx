@@ -42,6 +42,7 @@ import ChatInterface from '@/components/ChatInterface';
 import ConfigPanel from '@/components/ConfigPanel';
 import AlertPanel from '@/components/AlertPanel';
 import StatusBar from '@/components/StatusBar';
+import VideoAnalysisResults from '@/components/VideoAnalysisResults';
 
 const DEFAULT_CONFIG: TacSenseConfig = {
   chunkSize: 0, // No chunking by default
@@ -267,32 +268,23 @@ export default function TacSenseAI() {
       // Send to inference API
       const response = await TacSenseAPI.sendChatMessage(message, context);
 
+      // Handle the response format from backend (OpenAI-style)
+      const responseContent = response.choices?.[0]?.message?.content || response.response || "No response received";
+      const responseConfidence = response.confidence || 0.85;
+
       const assistantMessage: Message = {
         id: generateId(),
         type: 'assistant',
-        content: response.response,
+        content: responseContent,
         timestamp: new Date(),
         metadata: {
-          confidence: response.confidence,
+          confidence: responseConfidence,
           intent: textAnalysis.intent,
           urgency: textAnalysis.urgency as 'low' | 'medium' | 'high',
         },
       };
 
       addMessage(assistantMessage);
-
-      // Generate speech if enabled
-      if (config.enableVoiceAnalysis) {
-        try {
-          const speechResult = await TacSenseAPI.generateSpeech(response.response);
-          if (speechResult.status === 'success') {
-            const audio = new Audio(speechResult.audio_url);
-            setAudioPlayer(audio);
-          }
-        } catch (speechError) {
-          console.error('Speech generation error:', speechError);
-        }
-      }
 
       // Check for high urgency and create alerts
       if (textAnalysis.urgency === 'high') {
@@ -319,6 +311,31 @@ export default function TacSenseAI() {
     // TODO: Implement voice recording functionality
     toast.info(isVoiceRecording ? 'Voice recording stopped' : 'Voice recording started');
   }, [isVoiceRecording]);
+
+  // Manual TTS generation handler
+  const generateSpeechForMessage = useCallback(async (messageContent: string) => {
+    if (!messageContent.trim()) {
+      toast.error('No text to generate speech for');
+      return;
+    }
+
+    try {
+      toast.info('Generating speech... This may take a moment for first request.');
+      const speechResult = await TacSenseAPI.generateSpeech(messageContent);
+      if (speechResult.status === 'success') {
+        const audio = new Audio(speechResult.audio_url);
+        setAudioPlayer(audio);
+        // Auto-play the generated speech
+        audio.play().catch(e => console.log('Auto-play prevented by browser'));
+        toast.success('Speech generated successfully!');
+      } else {
+        toast.error('Speech generation failed');
+      }
+    } catch (speechError) {
+      console.error('Speech generation error:', speechError);
+      toast.error('Speech generation timeout - TTS model may need to load first');
+    }
+  }, []);
 
   // Audio playback handler
   const playAudio = useCallback(() => {
@@ -358,7 +375,7 @@ export default function TacSenseAI() {
               </div>
               <h1 className="text-xl font-bold text-white">TacSense AI</h1>
             </div>
-            <div className="hidden md:flex items-center space-x-1 text-sm text-military-300">
+            <div className="hidden md:flex items-center space-x-1 text-base text-military-300">
               <div className="w-2 h-2 bg-success-500 rounded-full pulse-dot"></div>
               <span>Operational</span>
             </div>
@@ -394,7 +411,7 @@ export default function TacSenseAI() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-6 py-4 text-base font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'bg-success-50 text-success-800 border-success-600'
                   : 'text-military-300 border-transparent hover:text-white hover:bg-military-700'
@@ -449,11 +466,11 @@ export default function TacSenseAI() {
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <MessageSquareIcon className="w-5 h-5 text-tactical-400" />
-                  <span className="font-medium">CHAT</span>
+                  <span className="font-medium text-lg">CHAT</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <AlertTriangleIcon className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm text-military-300">ALERTS</span>
+                  <span className="text-base text-military-300">ALERTS</span>
                 </div>
               </div>
               
@@ -491,6 +508,7 @@ export default function TacSenseAI() {
               currentInput={currentInput}
               onInputChange={setCurrentInput}
               onSendMessage={handleSendMessage}
+              onGenerateSpeech={generateSpeechForMessage}
               isLoading={isLoading}
               activeTab={activeTab}
             />
@@ -498,70 +516,61 @@ export default function TacSenseAI() {
         </div>
 
         {/* Right Sidebar - Analysis Results */}
-        <div className="w-80 bg-military-800 border-l border-military-600 flex flex-col">
+        <div className="w-96 bg-military-800 border-l border-military-600 flex flex-col">
           <div className="p-4 border-b border-military-600">
             <h3 className="font-medium text-white mb-2">
-              {activeTab === 'video' ? 'VIDEO EVENT SUMMARY' : 
-               activeTab === 'image' ? 'IMAGE ANALYSIS SUMMARY' : 
-               'LIVE STREAM SUMMARY'}
+              {activeTab === 'video' ? 'VIDEO ANALYSIS RESULTS' : 
+               activeTab === 'image' ? 'IMAGE ANALYSIS RESULTS' : 
+               'LIVE STREAM ANALYSIS'}
             </h3>
-            <div className="bg-military-700 rounded-lg p-4 text-sm text-military-300">
-              {uploadedFile && uploadedFile.status === 'completed' && uploadedFile.processedData ? (
-                <div className="space-y-2">
-                  <p className="text-white font-medium">Analysis Complete</p>
-                  <p>{uploadedFile.processedData.summary || 'Tactical analysis results available for querying.'}</p>
-                  {uploadedFile.processedData.insights && uploadedFile.processedData.insights.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-white font-medium text-xs mb-2">KEY INSIGHTS:</p>
-                      <ul className="space-y-1">
-                        {uploadedFile.processedData.insights.slice(0, 3).map((insight: any, index: number) => (
-                          <li key={index} className="text-xs">• {insight.description || insight.title}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {uploadedFile.processedData.threats && uploadedFile.processedData.threats.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-danger-400 font-medium text-xs mb-2">THREATS DETECTED:</p>
-                      <ul className="space-y-1">
-                        {uploadedFile.processedData.threats.slice(0, 2).map((threat: any, index: number) => (
-                          <li key={index} className="text-xs text-danger-300">
-                            ⚠ {threat.description || threat.type} ({threat.severity})
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+          </div>
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+            {uploadedFile && uploadedFile.status === 'completed' && uploadedFile.processedData ? (
+              <VideoAnalysisResults 
+                analysisData={uploadedFile.processedData}
+                fileName={uploadedFile.name}
+              />
+            ) : (
+              <div className="bg-military-700 rounded-lg p-4 text-base text-military-300">
+                <p>Upload a {activeTab === 'video' ? 'video' : activeTab === 'image' ? 'image' : 'file'} to see comprehensive tactical analysis results here...</p>
+                <div className="mt-4 space-y-2 text-sm">
+                  <p className="text-white font-medium">Enhanced Analysis Features:</p>
+                  <ul className="space-y-1 text-military-400">
+                    <li>• Powered by Gemini 2.5-pro multimodal AI</li>
+                    <li>• Tactical situational awareness</li>
+                    <li>• Threat assessment and detection</li>
+                    <li>• Operational insights and recommendations</li>
+                    <li>• Safety compliance evaluation</li>
+                  </ul>
                 </div>
-              ) : (
-                <p>Upload a {activeTab === 'video' ? 'video' : activeTab === 'image' ? 'image' : 'file'} to see tactical analysis results here...</p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 flex flex-col p-4 space-y-4">
             <div className="space-y-2">
               <button 
                 onClick={() => setCurrentInput("What are the key findings from this analysis?")}
-                className="w-full bg-tactical-600 hover:bg-tactical-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                className="w-full bg-tactical-600 hover:bg-tactical-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-base"
               >
                 Ask
               </button>
               <button 
                 onClick={() => setCurrentInput("Generate a scenario highlight focusing on critical events")}
-                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-base"
               >
                 Generate Scenario Highlight
               </button>
               <button 
                 onClick={() => setCurrentInput("Create a summary of key tactical highlights")}
-                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-base"
               >
                 Generate Highlight
               </button>
               <button 
                 onClick={resetChat}
-                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                className="w-full bg-military-700 hover:bg-military-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-base"
               >
                 Reset Chat
               </button>

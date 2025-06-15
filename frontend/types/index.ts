@@ -179,7 +179,12 @@ export interface InferenceRequest {
 }
 
 export interface InferenceResponse {
-  response: string;
+  response?: string;  // Direct response format
   confidence?: number;
   processing_time?: number;
+  choices?: Array<{   // OpenAI-style response format
+    message: {
+      content: string;
+    };
+  }>;
 } 

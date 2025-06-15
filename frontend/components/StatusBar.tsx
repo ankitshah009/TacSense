@@ -12,6 +12,7 @@ import {
   AlertCircleIcon
 } from 'lucide-react';
 
+import { useEffect, useState } from 'react';
 import { FileUpload, ProcessingStatus } from '@/types';
 import { cn, formatFileSize } from '@/lib/utils';
 
@@ -28,6 +29,21 @@ export default function StatusBar({
   processingStatus, 
   activeConnections 
 }: StatusBarProps) {
+  const [currentTime, setCurrentTime] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    };
+    
+    updateTime(); // Set initial time
+    const interval = setInterval(updateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const getSystemStatusColor = (status: typeof systemStatus) => {
     switch (status) {
       case 'operational':
@@ -86,7 +102,7 @@ export default function StatusBar({
 
   return (
     <div className="bg-military-800 border-t border-military-600 px-6 py-2">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-base">
         {/* Left side - System Status */}
         <div className="flex items-center space-x-6">
           {/* System Status */}
@@ -120,7 +136,7 @@ export default function StatusBar({
             <div className="flex items-center space-x-2 text-military-300">
               <FileIcon className="w-4 h-4" />
               <span className="truncate max-w-32">{uploadedFile.name}</span>
-              <span className="text-xs">({formatFileSize(uploadedFile.size)})</span>
+              <span className="text-sm">({formatFileSize(uploadedFile.size)})</span>
             </div>
           )}
 
@@ -139,7 +155,7 @@ export default function StatusBar({
                       {processingStatus.message}
                     </span>
                     {processingStatus.stage !== 'error' && processingStatus.stage !== 'completed' && (
-                      <span className="text-xs text-military-400">
+                      <span className="text-sm text-military-400">
                         ({processingStatus.progress}%)
                       </span>
                     )}
@@ -155,7 +171,7 @@ export default function StatusBar({
           {/* Current Time */}
           <div className="flex items-center space-x-2 text-military-300">
             <ClockIcon className="w-4 h-4" />
-            <span>{new Date().toLocaleTimeString()}</span>
+            <span>{mounted ? currentTime : '--:--:--'}</span>
           </div>
 
           {/* Performance Monitor */}
