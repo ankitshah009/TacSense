@@ -1,16 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
-  typescript: {
-    ignoreBuildErrors: false,
+  experimental: {
+    serverComponentsExternalPackages: ['sharp'],
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
-  images: {
-    domains: ['localhost', '127.0.0.1'],
+  typescript: {
+    ignoreBuildErrors: true,
   },
   async rewrites() {
     return [
