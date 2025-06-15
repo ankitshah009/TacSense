@@ -1,17 +1,34 @@
 services:
-  tacsense_app:
+  # Backend service using fast PyTorch image
+  backend:
     build:
-      context: .  # Context is now the project root
-      dockerfile: ./python_backend/Dockerfile # Path to Dockerfile from root
+      context: ./python_backend
+      dockerfile: Dockerfile.fast
     ports:
-      - "8000:8000"  # The Python app runs on port 8000 and serves everything
+      - "8000:8000"
     volumes:
-      # Mounts the python_backend code for development (reflects changes without rebuilding)
-      - ./python_backend:/usr/src/app/python_backend
-      # Mounts the frontend code so the Python server (FastAPI) can serve it
-      - ./frontend:/usr/src/app/frontend
+      # Mount code for development
+      - ./python_backend:/usr/src/app
+    environment:
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - LIVEKIT_URL=${LIVEKIT_URL:-ws://localhost:7880}
     networks:
       - tacsense_network
+
+  # Frontend service using nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - tacsense_network
+
+  # LiveKit server
   livekit:
     image: livekit/livekit-server:latest
     command: --dev

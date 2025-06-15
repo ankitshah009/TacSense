@@ -1,126 +1,241 @@
-# TacSense AI
+# TacSense AI - Real-time Situational Awareness Dashboard
 
-Real-time situational awareness dashboard for military commanders, integrating AI-driven analysis of voice commands, text inputs, and visual data to provide actionable insights during operations. Features advanced Text-to-Speech (TTS) capabilities powered by Resemble AI's Chatterbox model.
+**TacSense AI** is a comprehensive real-time situational awareness dashboard designed for military commanders and tactical operations. It integrates AI-driven analysis of voice commands, text inputs, and visual data to provide actionable insights during operations.
 
-## Features
+## 🎯 Overview
 
-- **Unified Backend**: Single Python FastAPI service for simplified development, deployment, and maintenance.
-- **Advanced TTS with Chatterbox**:
-  - High-quality, natural-sounding speech synthesis with emotion and style control.
-  - Voice cloning from short audio prompts.
-  - Low-latency generation for real-time applications.
-- **LiveKit Voice Streaming**:
-  - Uses a local LiveKit server for WebRTC audio capture.
-  - Generates access tokens via the backend for secure connections.
-- **Video Search Capability**:
-  - Upload a video and search its transcript for keywords.
-- **Multimodal Input Processing**:
-  - Voice command analysis for emotion and urgency.
-  - Text input processing for tactical queries and intent classification.
-  - Visual data integration for threat detection (simulated).
-- **AI-Powered Analysis**:
-  - Intent recognition for operational commands.
-  - Threat assessment and prioritization.
-  - Tactical recommendations based on situational context.
-- **Interactive Dashboard**:
-  - Real-time map visualization with Leaflet.js.
-  - Dynamic threat indicators and unit position updates.
-  - Voice and text interface for commander interaction.
+TacSense AI processes multimodal inputs to interpret commander intent, aggregate intelligence (including reports and simulated sensor feeds), and deliver concise recommendations via voice and interactive visuals. The system enhances decision-making speed and accuracy while reducing cognitive overload in high-pressure scenarios.
 
-## Technical Architecture
+## ✨ Key Features
 
-The application now runs on a unified backend built with Python and FastAPI. This single service is responsible for:
+### 🎥 **Video Intelligence & Analysis**
+- Upload and analyze video files for tactical insights
+- Extract key events, personnel movement, and equipment usage
+- Detect safety violations and security threats
+- Generate comprehensive operational reports
 
-1. **Serving the Frontend**: The static HTML, CSS, and JavaScript files for the user interface are served directly by FastAPI.
-2. **Handling API Requests**: All API endpoints are consolidated under this service:
-    - `/api/tts/*`: Endpoints for TTS generation, audio retrieval, and status checks.
-    - `/api/analyze/*`: Endpoints for voice, text, and visual analysis.
-    - `/api/tactical-data`: Endpoint for retrieving and updating tactical information (units, threats).
-3. **Running Analysis Logic**: The core analysis functions are implemented in Python.
-4. **Orchestration**: Docker Compose starts both the FastAPI service and a LiveKit server for real-time audio streaming.
+### 📡 **Live Stream Analysis**
+- Real-time streaming analysis and voice recognition
+- Live threat detection and monitoring
+- Multi-participant voice analysis with stress detection
+- Continuous situational awareness updates
 
-This architecture removes the complexity of managing separate Node.js and Python backends.
+### 📷 **Image Intelligence & Analysis**
+- Analyze static images for tactical information
+- Object detection and threat identification
+- Personnel and equipment inventory
+- Environmental assessment and hazard detection
 
-## Getting Started
+### 🎤 **Multimodal AI Capabilities**
+- **Voice Analysis**: Detect urgency and stress in voice commands with tone analysis
+- **Text Processing**: Natural language understanding for queries and commands
+- **Visual Processing**: Computer vision for threat and object detection
+- **Speech Synthesis**: Context-aware audio responses with emotional intelligence
+
+### 🧠 **AI-Powered Insights**
+- **Intent Recognition**: Understand commander objectives and priorities
+- **Threat Assessment**: Automated identification of security risks
+- **Operational Recommendations**: AI-generated tactical suggestions
+- **Confidence Scoring**: Reliability metrics for all analysis results
+
+## 🏗️ Architecture
+
+### Frontend (Next.js)
+- **Modern React Interface**: Built with Next.js 14 and TypeScript
+- **Military-themed UI**: Tactical color schemes and professional design
+- **Real-time Updates**: WebSocket integration for live data
+- **Responsive Design**: Works across desktop and mobile devices
+
+### Backend (FastAPI)
+- **High-performance API**: Built with Python FastAPI
+- **Multimodal Processing**: Handles video, audio, image, and text analysis
+- **AI Integration**: Inflection AI for natural language processing
+- **TTS Capabilities**: Resemble AI's Chatterbox for voice synthesis
+
+### AI & Analysis
+- **Computer Vision**: Object detection and scene analysis
+- **Speech Recognition**: Voice-to-text with emotion analysis
+- **Natural Language Processing**: Intent classification and sentiment analysis
+- **Machine Learning**: Threat detection and pattern recognition
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Docker and Docker Compose
+- Node.js 18+ (for development)
+- Python 3.9+ (for development)
 
-- **Docker and Docker Compose**: The recommended method for running the application. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-- **Git**: For cloning the repository.
+### Option 1: Docker Compose (Recommended)
 
-### Running with Docker (Recommended)
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ankitshah009/TacSense.git
+   cd TacSense
+   ```
 
-1. **Clone the repository:**
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
 
-    ```bash
-    git clone https://github.com/ankitshah009/TacSense.git
-    cd TacSense
-    ```
+3. **Run with Docker Compose**
+   ```bash
+   # Full production build
+   docker-compose up --build
 
-2. **Build and run the application:**
+   # Fast development build
+   docker-compose -f docker-compose.fast.yml up --build
+   ```
 
-    ```bash
-    docker-compose up --build
-    ```
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
 
-    Set the `INFLECTION_API_TOKEN` environment variable with your Inflection AI
-    API token before running the container:
+### Option 2: Development Setup
 
-    ```bash
-    export INFLECTION_API_TOKEN=<your-token>
-    ```
+1. **Backend Setup**
+   ```bash
+   cd python_backend
+   pip install -r requirements.txt
+   python main.py
+   ```
 
-    This command will build the Docker image, install all dependencies, and start the FastAPI backend along with a local LiveKit server.
+2. **Frontend Setup**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-3. **Access the application:**
-    - The TacSense AI dashboard will be available at `http://localhost:8000`.
+## 📋 Usage Guide
 
-4. **To stop the application:**
-    - Press `Ctrl+C` in the terminal where `docker-compose up` is running.
-    - To remove the container and network, run: `docker-compose down`.
+### 1. **Upload and Analyze Content**
+- Select the appropriate tab (Video, Live Stream, or Image)
+- Drag and drop files or click to upload
+- Configure analysis parameters if needed
+- Wait for processing and review results
 
-## API Endpoints
+### 2. **Interactive Chat Interface**
+- Ask questions about uploaded content
+- Use predefined quick actions for common queries
+- Voice input support for hands-free operation
+- Real-time analysis with confidence scoring
 
-All endpoints are served from the main application running on port 8000.
+### 3. **Configuration Options**
+- **Chunk Size**: Control video processing segments
+- **AI Model**: Select from available language models
+- **Analysis Prompts**: Customize for specific use cases
+- **Voice Analysis**: Enable/disable stress detection
 
-- `POST /api/tts/generate`: Generate speech from text.
-- `GET /api/tts/audio/{filename}`: Retrieve generated audio.
-- `GET /api/tts/status`: Check TTS model status.
-- `POST /api/inference`: Proxy to the external Inflection AI inference API.
-- `POST /api/analyze/voice`: Analyze voice metrics.
-- `POST /api/analyze/text`: Analyze text input.
-- `POST /api/analyze/visual`: Analyze visual data.
-- `GET /api/tactical-data`: Get current tactical data.
-- `POST /api/update-position`: Update a unit's position.
-- `POST /api/report-threat`: Report a new threat.
+### 4. **Quick Analysis Functions**
+- **Safety Analysis**: Identify violations and hazards
+- **Threat Detection**: Security risk assessment
+- **Asset Inventory**: Personnel and equipment tracking
+- **Operational Recommendations**: AI-generated suggestions
 
-## Project Structure
+## 🎮 Demo Scenarios
 
-```text
-.
-├── docker-compose.yml      # Docker orchestration file
-├── frontend/               # All frontend assets (HTML, CSS, JS)
-│   ├── index.html
-│   └── styles.css
-├── python_backend/         # Python FastAPI application
-│   ├── Dockerfile
-│   ├── main.py             # FastAPI app, endpoints
-│   ├── analysis_logic.py   # Core analysis functions
-│   └── requirements.txt
-└── README.md
+### Military Training Analysis
+```
+1. Upload training exercise video
+2. Ask: "Identify any safety violations during the exercise"
+3. Review AI-generated insights and recommendations
+4. Export analysis report for debriefing
 ```
 
-## TTS Service Integration
+### Surveillance Feed Review
+```
+1. Upload security camera footage
+2. Ask: "Detect any suspicious activities or unauthorized personnel"
+3. Review threat assessment with confidence scores
+4. Generate operational response recommendations
+```
 
-The TTS service uses Resemble AI's Chatterbox model, which is licensed under the MIT License. The service provides:
+### Equipment Inspection
+```
+1. Upload facility or equipment images
+2. Ask: "List all personnel and equipment visible"
+3. Review asset inventory and condition assessment
+4. Identify maintenance or safety concerns
+```
 
-- High-quality, natural-sounding speech
-- Emotion and style control
-- Voice cloning capabilities
-- Ultra-low latency for real-time applications
+## 🔧 Configuration
 
-For more details, see the [python_backend/README.md](python_backend/README.md) file.
+### Environment Variables
+```env
+# API Keys
+INFLECTION_API_TOKEN=your_inflection_api_key
+LIVEKIT_API_KEY=your_livekit_key
+LIVEKIT_API_SECRET=your_livekit_secret
+LIVEKIT_URL=ws://localhost:7880
 
-## License
+# Application Settings
+NODE_ENV=development
+API_BASE_URL=http://localhost:8000
+```
+
+### Docker Configuration
+- **Production**: Uses optimized builds with minimal dependencies
+- **Fast Development**: Includes hot reload and development tools
+- **Volumes**: Persistent storage for uploads and models
+
+## 🛡️ Security Features
+
+- **Data Encryption**: All data transmission encrypted
+- **Access Control**: Role-based permissions system
+- **Audit Logging**: Complete activity tracking
+- **Secure Upload**: File validation and sanitization
+- **Privacy Protection**: No data stored beyond session
+
+## 📊 Performance Optimization
+
+- **Lazy Loading**: Models loaded on-demand
+- **Caching**: Intelligent result caching
+- **Compression**: Optimized media processing
+- **Streaming**: Real-time data processing
+- **Auto-scaling**: Docker-based scaling
+
+## 🔌 API Documentation
+
+### Core Endpoints
+- `POST /api/inference` - Text analysis and chat
+- `POST /api/video/process` - Video analysis
+- `POST /api/image/analyze` - Image analysis
+- `POST /api/files/upload` - File upload
+- `GET /api/tts/status` - System status
+
+### WebSocket Events
+- `analysis_progress` - Real-time processing updates
+- `threat_alert` - Immediate threat notifications
+- `system_status` - Health monitoring
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: [Wiki](https://github.com/ankitshah009/TacSense/wiki)
+- **Issues**: [GitHub Issues](https://github.com/ankitshah009/TacSense/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ankitshah009/TacSense/discussions)
+
+## 🙏 Acknowledgments
+
+- **Inflection AI** for natural language processing capabilities
+- **Resemble AI** for text-to-speech technology
+- **OpenAI** for computer vision models
+- **LiveKit** for real-time communication infrastructure
+
+---
+
+**Built with ❤️ for military and tactical operations**
