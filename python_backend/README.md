@@ -111,6 +111,19 @@ curl -X POST http://localhost:8000/api/inference \
   -d '{"context": [{"text": "Hi", "type": "Human"}], "config": "Pi-3.1"}'
 ```
 
+### Video Inference
+
+**POST** `/api/video/inference`
+
+Upload a video file and receive a tactical summary generated with the Pi model.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/api/video/inference \
+  -F "video=@/path/to/video.mp4"
+```
+
 ## Example Usage
 
 ### Using cURL

@@ -208,6 +208,7 @@ API_BASE_URL=http://localhost:8000
 ### Core Endpoints
 - `POST /api/inference` - Text analysis and chat
 - `POST /api/video/process` - Video analysis
+- `POST /api/video/inference` - Summarize a video with Inflection's Pi model
 - `POST /api/image/analyze` - Image analysis
 - `POST /api/files/upload` - File upload
 - `GET /api/tts/status` - System status
