@@ -314,6 +314,158 @@ async def run_inference(request: InferenceRequest):
     payload = request.dict()
     return call_inflection_api(payload)
 
+@app.post("/api/files/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Upload a file for processing"""
+    try:
+        # Create temp file
+        file_id = str(uuid.uuid4())
+        file_path = TEMP_DIR / f"{file_id}_{file.filename}"
+        
+        # Save uploaded file
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        return {
+            "fileId": file_id,
+            "status": "uploaded",
+            "filename": file.filename,
+            "size": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/video/process")
+async def process_video(
+    video: UploadFile = File(...),
+    chunk_size: int = Form(0),
+    prompt: str = Form(""),
+    caption_prompt: str = Form(""),
+    summary_prompt: str = Form("")
+):
+    """Process video file for tactical analysis"""
+    try:
+        # Save video file temporarily
+        file_id = str(uuid.uuid4())
+        video_path = TEMP_DIR / f"{file_id}_{video.filename}"
+        
+        with open(video_path, "wb") as buffer:
+            content = await video.read()
+            buffer.write(content)
+        
+        # Mock processing (in real implementation, would extract frames, analyze, etc.)
+        import time
+        time.sleep(2)  # Simulate processing time
+        
+        # Mock analysis results
+        analysis_result = {
+            "summary": "Tactical video analysis completed. Detected personnel movement, equipment usage, and environmental factors. No immediate threats identified.",
+            "insights": [
+                {
+                    "id": "insight_1",
+                    "type": "tactical",
+                    "title": "Personnel Movement",
+                    "description": "Multiple personnel observed in coordinated movement patterns",
+                    "confidence": 0.89,
+                    "priority": "medium"
+                },
+                {
+                    "id": "insight_2", 
+                    "type": "operational",
+                    "title": "Equipment Status",
+                    "description": "Standard tactical equipment detected and properly utilized",
+                    "confidence": 0.92,
+                    "priority": "low"
+                }
+            ],
+            "threats": [],
+            "recommendations": [
+                {
+                    "id": "rec_1",
+                    "type": "tactical",
+                    "priority": "medium",
+                    "title": "Continue Monitoring",
+                    "description": "Maintain surveillance of personnel movement patterns",
+                    "confidence": 0.85
+                }
+            ],
+            "confidence": 0.88,
+            "timestamp": time.time()
+        }
+        
+        # Cleanup temp file
+        os.unlink(video_path)
+        
+        return analysis_result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/image/analyze")
+async def analyze_image(
+    image: UploadFile = File(...),
+    prompt: str = Form("")
+):
+    """Analyze image for tactical information"""
+    try:
+        # Save image file temporarily
+        file_id = str(uuid.uuid4())
+        image_path = TEMP_DIR / f"{file_id}_{image.filename}"
+        
+        with open(image_path, "wb") as buffer:
+            content = await image.read()
+            buffer.write(content)
+        
+        # Mock image analysis
+        analysis_result = {
+            "objects": [
+                {"type": "person", "confidence": 0.92, "position": {"x": 100, "y": 150}},
+                {"type": "vehicle", "confidence": 0.87, "position": {"x": 300, "y": 200}}
+            ],
+            "threats": [],
+            "insights": [
+                {
+                    "type": "operational",
+                    "description": "Clear visibility conditions, multiple subjects identified",
+                    "confidence": 0.90
+                }
+            ]
+        }
+        
+        # Cleanup temp file
+        os.unlink(image_path)
+        
+        return analysis_result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/text/analyze")
+async def analyze_text_endpoint(text: str = Form(...)):
+    """Analyze text for intent, sentiment, and urgency"""
+    try:
+        from analysis_logic import analyze_text
+        
+        result = analyze_text(text)
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/voice/analyze")
+async def analyze_voice_endpoint(voice_data: dict):
+    """Analyze voice metrics for stress and urgency"""
+    try:
+        from analysis_logic import analyze_voice
+        
+        voice_metrics = voice_data.get("voiceMetrics", {})
+        result = analyze_voice(voice_metrics)
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
