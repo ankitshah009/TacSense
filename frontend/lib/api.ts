@@ -159,6 +159,28 @@ export class TacSenseAPI {
     }
   }
 
+  static async inferVideo(videoFile: File): Promise<InferenceResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('video', videoFile);
+
+      const response = await apiClient.post<InferenceResponse>(
+        '/video/inference',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 120000,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Video inference error:', error);
+      throw error;
+    }
+  }
+
   static async searchVideo(
     query: string, 
     videoFile: File
