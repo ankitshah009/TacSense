@@ -1,16 +1,13 @@
 # -------- Stage 1: Install dependencies --------
 FROM node:18-alpine AS deps
 
-# Optional: install openssl for Prisma or other libs
-RUN apk add --no-cache openssl
-
 WORKDIR /app
 
 # Copy dependency files first for better caching
 COPY package.json package-lock.json ./
 
-# Install only production dependencies
-RUN npm ci --include=prod
+# Install all dependencies (dev + prod) for building
+RUN npm ci
 
 # -------- Stage 2: Build the application --------
 FROM node:18-alpine AS builder
