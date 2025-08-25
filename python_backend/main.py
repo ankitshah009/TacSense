@@ -513,7 +513,7 @@ async def process_video(
         if GEMINI_AVAILABLE:
             try:
                 # Set up Gemini analyzer with API key
-                gemini_api_key = "AIzaSyCfm2xX5Lsnpcq18u4Hzv3zbbXkEFbHn44"
+                gemini_api_key = os.getenv("GEMINI_API_KEY")
                 analyzer = GeminiVideoAnalyzer(gemini_api_key)
                 
                 print(f"🎬 Starting Gemini video analysis for: {video.filename}")
@@ -648,7 +648,7 @@ async def analyze_image(
         if GEMINI_AVAILABLE:
             try:
                 # Set up Gemini analyzer with API key
-                gemini_api_key = "AIzaSyCfm2xX5Lsnpcq18u4Hzv3zbbXkEFbHn44"
+                gemini_api_key = os.getenv("GEMINI_API_KEY")
                 analyzer = GeminiVideoAnalyzer(gemini_api_key)
                 
                 print(f"🖼️  Starting Gemini image analysis for: {image.filename}")
